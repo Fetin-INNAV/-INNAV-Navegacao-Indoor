@@ -1,0 +1,33 @@
+# Arquivos de Sistema do Windows
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Android Studio / Gradle (Pasta app-mobile)
+*.apk
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+
+# Arquivos do Arduino / ESP32 (Pasta hardware)
+build/
+*.elf
+*.bin
+*.hex
+*.uf2
+
+# Python (Pasta scripts-calibracao)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
