@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import java.util.Locale
+import android.content.Intent
 
 // Importando a sua pasta de modelos onde estão o Grafo e os Nós
 import com.fetin.innav.models.*
@@ -116,15 +117,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun configurarBotoesDaInterface() {
-        // Ligando o Front-end (XML) com o Back-end (Kotlin)
         val btnDestino = findViewById<Button>(R.id.btnEscolherDestino)
         val btnExploracao = findViewById<Button>(R.id.btnExploracaoLivre)
 
         btnDestino.setOnClickListener {
             modoExploracaoLivre = false
-            val mensagem = "Diga o nome do local para onde deseja ir."
+            val mensagem = "Selecione o seu destino na tela."
             falar(mensagem)
-            Toast.makeText(this, "Modo Rota Ativado", Toast.LENGTH_SHORT).show()
+
+            // A mágica acontece aqui: O Intent abre a DestinosActivity
+            val intent = Intent(this, DestinosActivity::class.java)
+            startActivity(intent)
         }
 
         btnExploracao.setOnClickListener {

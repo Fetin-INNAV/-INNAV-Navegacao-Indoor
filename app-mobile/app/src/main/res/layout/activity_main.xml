@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -12,10 +13,12 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_margin="16dp"
+        app:cornerRadius="24dp"
         android:backgroundTint="#FFEB3B"
-        android:text="ESCOLHER DESTINO"
+        android:text="ESCOLHER\nDESTINO"
         android:textColor="#000000"
-        android:textSize="32sp"
+        android:textSize="40sp"
+        android:gravity="center"
         android:textStyle="bold"
         android:contentDescription="Botão Escolher Destino. Toque duas vezes para falar o nome do local para onde deseja ir." />
 
@@ -25,10 +28,12 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_margin="16dp"
+        app:cornerRadius="24dp"
         android:backgroundTint="#FFEB3B"
-        android:text="EXPLORAÇÃO LIVRE"
+        android:text="EXPLORAÇÃO\nLIVRE"
         android:textColor="#000000"
-        android:textSize="32sp"
+        android:textSize="40sp"
+        android:gravity="center"
         android:textStyle="bold"
         android:contentDescription="Botão de modo Radar. Toque duas vezes para iniciar a exploração livre e ouvir os pontos de interesse enquanto caminha." />
 
