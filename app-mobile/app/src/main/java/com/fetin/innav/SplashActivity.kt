@@ -38,7 +38,7 @@ class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
     }
-
+// nada haver irmao .
     private fun falar(texto: String) {
         if (::tts.isInitialized) {
             tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "")
