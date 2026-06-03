@@ -9,16 +9,20 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import java.util.Locale
+import android.content.Intent
 
 // Importando a sua pasta de modelos onde estão o Grafo e os Nós
 import com.fetin.innav.models.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private val bluetoothAdapter by lazy {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -27,8 +31,14 @@ class MainActivity : AppCompatActivity() {
 
     private val bleScanner by lazy { bluetoothAdapter?.bluetoothLeScanner }
 
+    // Motor de Voz do Android (Text-to-Speech)
+    private lateinit var tts: TextToSpeech
+
     // Variável de segurança: impede que o sistema calcule a rota repetidamente
     private var ultimoCheckpointVisitado = ""
+
+    // Controle da Fase 2: Modo Rota vs Modo Exploração Livre
+    private var modoExploracaoLivre = false
 
     // Instanciamos o mapa físico
     private val mapaInatel = Grafo()
@@ -44,10 +54,10 @@ class MainActivity : AppCompatActivity() {
             val macAddress = result.device.address
             val rssi = result.rssi
 
-            // O MAC oficial do seu ESP32
+            // O MAC oficial do seu ESP32 (Altere para o MAC real do ESP32 que está com você)
             val macEspPortaria = "68:25:DD:48:1F:12"
 
-            // Se encontrou o ESP32 com um sinal forte
+            // Se encontrou o ESP32 com um sinal forte (Zona de Gatilho)
             if (macAddress == macEspPortaria && rssi > -60) {
 
                 // Verifica se já estávamos parados aqui
@@ -55,29 +65,32 @@ class MainActivity : AppCompatActivity() {
                     ultimoCheckpointVisitado = macEspPortaria
 
                     Log.d("INNAV_ROTA", "===================================================")
-                    Log.d("INNAV_ROTA", "📍 ALVO DETETADO! Você está na: Portaria Principal")
+                    Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está na: Portaria Principal")
                     Log.d("INNAV_ROTA", "Força do Sinal: $rssi dBm")
-                    Log.d("INNAV_ROTA", "Acionando o algoritmo de Dijkstra...")
 
-                    // A Mágica Matemática com a correção de Orientação a Objetos:
-                    // Passamos o mapa direto no construtor da classe
-                    val calculadora = CalculadoraRota(mapaInatel)
+                    if (modoExploracaoLivre) {
+                        // FASE 2.1: Modo de Exploração (Dijkstra desativado)
+                        val aviso = "Você está passando pela Portaria Principal."
+                        Log.d("INNAV_ROTA", aviso)
+                        falar(aviso)
+                        runOnUiThread { Toast.makeText(this@MainActivity, aviso, Toast.LENGTH_LONG).show() }
+                    } else {
+                        // FASE 2.2: Rota Específica (Aciona Dijkstra)
+                        Log.d("INNAV_ROTA", "Acionando o algoritmo de Dijkstra...")
 
-                    // Calculamos a rota da origem ao destino
-                    val rotaCalculada = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
+                        val calculadora = CalculadoraRota(mapaInatel)
+                        val rotaCalculada = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
 
-                    Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso! Siga as instruções:")
+                        Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")
+                        falar("Checkpoint detectado. Rota traçada. Siga as instruções.")
 
-                    // Imprime o passo a passo da rota no Logcat
-                    rotaCalculada?.forEach { aresta ->
-                        Log.d("INNAV_ROTA", "-> ${aresta.instrucao}")
+                        rotaCalculada?.forEach { aresta ->
+                            Log.d("INNAV_ROTA", "-> ${aresta.instrucao}")
+                        }
+
+                        runOnUiThread { Toast.makeText(this@MainActivity, "📍 Rota Calculada!", Toast.LENGTH_LONG).show() }
                     }
-
                     Log.d("INNAV_ROTA", "===================================================")
-
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "📍 Checkpoint: Portaria!", Toast.LENGTH_LONG).show()
-                    }
                 }
             }
         }
@@ -95,8 +108,55 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Inicializa o motor de voz nativo do Android
+        tts = TextToSpeech(this, this)
+
         montarMapaFisico()
         pedirPermissoesBluetooth()
+        configurarBotoesDaInterface()
+    }
+
+    private fun configurarBotoesDaInterface() {
+        val btnDestino = findViewById<Button>(R.id.btnEscolherDestino)
+        val btnExploracao = findViewById<Button>(R.id.btnExploracaoLivre)
+
+        btnDestino.setOnClickListener {
+            modoExploracaoLivre = false
+            val mensagem = "Selecione o seu destino na tela."
+            falar(mensagem)
+
+            // A mágica acontece aqui: O Intent abre a DestinosActivity
+            val intent = Intent(this, DestinosActivity::class.java)
+            startActivity(intent)
+        }
+
+        btnExploracao.setOnClickListener {
+            modoExploracaoLivre = true
+            val mensagem = "Modo de exploração ativado. Caminhe livremente."
+            falar(mensagem)
+            Toast.makeText(this, "Modo Exploração Ativado", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Função auxiliar para converter Texto em Voz
+    private fun falar(texto: String) {
+        if (::tts.isInitialized) {
+            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "")
+        }
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            // Configura o idioma da voz para Português do Brasil
+            val result = tts.setLanguage(Locale("pt", "BR"))
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("INNAV_TTS", "Idioma não suportado ou faltando dados.")
+            } else {
+                Log.d("INNAV_TTS", "Sistema de voz inicializado com sucesso.")
+            }
+        } else {
+            Log.e("INNAV_TTS", "Falha ao inicializar o TextToSpeech.")
+        }
     }
 
     private fun montarMapaFisico() {
@@ -129,5 +189,14 @@ class MainActivity : AppCompatActivity() {
             bleScanner?.startScan(scanCallback)
             Toast.makeText(this, "Radar INNAV Ativado!", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onDestroy() {
+        // É importante desligar a voz quando o app fechar para não travar a memória
+        if (::tts.isInitialized) {
+            tts.stop()
+            tts.shutdown()
+        }
+        super.onDestroy()
     }
 }
