@@ -18,6 +18,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import java.util.Locale
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 
 // Importando a sua pasta de modelos onde estão o Grafo e os Nós
 import com.fetin.innav.models.*
@@ -82,7 +84,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         val rotaCalculada = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
 
                         Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")
-                        falar("Checkpoint detectado. Rota traçada. Siga as instruções.")
+
 
                         rotaCalculada?.forEach { aresta ->
                             Log.d("INNAV_ROTA", "-> ${aresta.instrucao}")
@@ -149,10 +151,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (status == TextToSpeech.SUCCESS) {
             // Configura o idioma da voz para Português do Brasil
             val result = tts.setLanguage(Locale("pt", "BR"))
+
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("INNAV_TTS", "Idioma não suportado ou faltando dados.")
             } else {
                 Log.d("INNAV_TTS", "Sistema de voz inicializado com sucesso.")
+
+                // A SOLUÇÃO: Um pequeno atraso de 800 milissegundos (0.8 segundos)
+                // Isso dá tempo para o motor de áudio do telemóvel "aquecer"
+                Handler(Looper.getMainLooper()).postDelayed({
+                    val instrucaoInicial = "Bem-vindo ao In-Náv. Você pode escolher seu destino apertando a parte superior da tela, ou usar o modo livre na parte inferior da tela."
+                    falar(instrucaoInicial)
+                }, 1500)
             }
         } else {
             Log.e("INNAV_TTS", "Falha ao inicializar o TextToSpeech.")
