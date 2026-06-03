@@ -23,7 +23,7 @@ class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Cria o temporizador: Espera 4000 milissegundos (4 segundos) e roda a função irParaMain()
         Handler(Looper.getMainLooper()).postDelayed({
             irParaMain()
-        }, 4000)
+        }, 4300)
     }
 
     override fun onInit(status: Int) {
@@ -34,7 +34,7 @@ class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.e("INNAV_TTS", "Idioma não suportado.")
             } else {
                 // A voz de Onboarding da sua documentação!
-                falar("Bem-vindo ao INNAV. O seu assistente de navegação indoor.")
+                falar("Bem-vindo ao innav. O seu assistente de navegação indoor.")
             }
         }
     }
