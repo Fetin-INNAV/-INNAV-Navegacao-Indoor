@@ -39,5 +39,9 @@
             android:name=".NavegacaoActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ChegadaActivity"
+            android:exported="false" />
+
     </application>
 </manifest>
