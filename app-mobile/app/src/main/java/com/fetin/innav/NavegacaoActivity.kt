@@ -82,12 +82,8 @@ class NavegacaoActivity : AppCompatActivity() {
 
         // 3. Mostra um aviso claro na tela
         runOnUiThread {
-            Toast.makeText(this, "🎉 VOCÊ CHEGOU AO LABORATÓRIO!", Toast.LENGTH_LONG).show()
-
-            // 4. Volta direto para a tela principal (Exploração/Destino)
-            val intent = Intent(this, MainActivity::class.java)
-            // Este comando limpa o histórico de telas para não acumular
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            // Alterado para ir para a ChegadaActivity
+            val intent = Intent(this, ChegadaActivity::class.java)
             startActivity(intent)
             finish()
         }

@@ -19,22 +19,29 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.InNav">
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
 
         <activity
             android:name=".DestinosActivity"
             android:exported="false" />
 
         <activity
-        android:name=".NavegacaoActivity"
-        android:exported="false" />
+            android:name=".NavegacaoActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ChegadaActivity"
+            android:exported="false" />
 
     </application>
 </manifest>
