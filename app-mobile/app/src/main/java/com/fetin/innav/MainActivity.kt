@@ -160,7 +160,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 // A SOLUÇÃO: Um pequeno atraso de 800 milissegundos (0.8 segundos)
                 // Isso dá tempo para o motor de áudio do telemóvel "aquecer"
                 Handler(Looper.getMainLooper()).postDelayed({
-                    val instrucaoInicial = "Bem-vindo ao In-Náv. Você pode escolher seu destino apertando a parte superior da tela, ou usar o modo livre na parte inferior da tela."
+                    val instrucaoInicial = "Você pode escolher seu destino apertando a parte superior da tela, ou usar o modo livre na parte inferior da tela."
                     falar(instrucaoInicial)
                 }, 1500)
             }
