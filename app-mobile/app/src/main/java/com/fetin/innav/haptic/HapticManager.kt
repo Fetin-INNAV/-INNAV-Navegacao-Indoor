@@ -9,7 +9,7 @@ import kotlin.math.abs
 
 /**
  * Gerenciador de haptic feedback (vibração) para o aplicativo.
- * Permite ajustar amplitude (0-255), emitir pulsos curtos e vibração de confirmação.
+ * Permite ajustar amplitude (0-255), emitir pulsos curtos, gradiente quente/frio e vibração de confirmação.
  */
 class HapticManager(context: Context) {
 
@@ -74,35 +74,48 @@ class HapticManager(context: Context) {
     }
 
     /**
+     * Aplica o gradiente tátil "Quente ou Frio" baseado no desvio angular em graus:
+     * - Desvio > 45º: Silêncio (Frio).
+     * - Desvio 20º a 45º: Pulsos leves e espaçados (Morno).
+     * - Desvio 8º a 20º: Pulsos rápidos/frequentes (Quente).
+     * - Desvio <= 8º: Vibração de confirmação / alinhamento exato (Muito Quente / Foco).
+     */
+    fun processarHapticQuenteFrio(diferencaAngular: Float, toleranceDegrees: Float = 8f) {
+        when {
+            diferencaAngular <= toleranceDegrees -> {
+                if (!isInToleranceZone) {
+                    isInToleranceZone = true
+                    vibrateConfirmation()
+                }
+            }
+            diferencaAngular <= 20f -> {
+                isInToleranceZone = false
+                vibratePulse(durationMs = 60L, amplitude = 220)
+            }
+            diferencaAngular <= 45f -> {
+                isInToleranceZone = false
+                vibratePulse(durationMs = 40L, amplitude = 110)
+            }
+            else -> {
+                isInToleranceZone = false
+                stop()
+            }
+        }
+    }
+
+    /**
      * Compara o azimute atual com o ângulo alvo, ajustando a intensidade da vibração:
      * Quanto mais próximo do alvo, maior a intensidade (0 a 255).
-     * Quando estiver no ângulo exato (dentro da tolerância de 10º), dispara uma vibração de confirmação.
-     *
-     * @param currentAzimuth Azimute atual em graus (0 a 360).
-     * @param targetAngle Ângulo alvo em graus (0 a 360).
-     * @param toleranceDegrees Tolerância angular em graus (padrão: 10º).
-     * @param maxAngleDifference Ângulo limite para início da vibração (padrão: 90º).
+     * Quando estiver no ângulo exato (dentro da tolerância de 8º), dispara uma vibração de confirmação.
      */
     fun adjustVibrationByAzimuth(
         currentAzimuth: Float,
         targetAngle: Float,
-        toleranceDegrees: Float = 10f,
-        maxAngleDifference: Float = 90f
+        toleranceDegrees: Float = 8f,
+        maxAngleDifference: Float = 45f
     ) {
         val diff = calculateAngularDifference(currentAzimuth, targetAngle)
-
-        if (diff <= toleranceDegrees) {
-            if (!isInToleranceZone) {
-                isInToleranceZone = true
-                vibrateConfirmation()
-            }
-        } else {
-            isInToleranceZone = false
-            val intensity = calculateIntensityForDifference(diff, toleranceDegrees, maxAngleDifference)
-            if (intensity > 0) {
-                vibratePulse(durationMs = 80L, amplitude = intensity)
-            }
-        }
+        processarHapticQuenteFrio(diff, toleranceDegrees)
     }
 
     /**
@@ -127,12 +140,11 @@ class HapticManager(context: Context) {
 
         /**
          * Ajusta/calcula a intensidade de vibração (0 a 255) baseada na distância do alvo.
-         * Quanto mais próximo do alvo, maior a intensidade.
          */
         fun calculateIntensityForDifference(
             angularDifference: Float,
-            toleranceDegrees: Float = 10f,
-            maxAngleDifference: Float = 90f
+            toleranceDegrees: Float = 8f,
+            maxAngleDifference: Float = 45f
         ): Int {
             if (angularDifference <= toleranceDegrees) {
                 return 255

@@ -9,8 +9,8 @@ import java.util.Locale
 /**
  * Gerenciador do modo "Exploração Livre":
  * Varre continuamente os beacons/ESP32 detectados, escuta a orientação do dispositivo,
- * dispara vibração tátil de confirmação e anúncio por voz (TTS) exclusivamente quando
- * o dispositivo estiver apontando diretamente para o nó (diferença de azimute <= 10º).
+ * aplica a lógica tátil "Quente ou Frio" e anuncia por voz (TTS) o nó selecionado
+ * com precisão de mira de ±8º.
  */
 class ExploracaoLivreManager(
     private val context: Context,
@@ -26,6 +26,11 @@ class ExploracaoLivreManager(
     // Trava de Debounce: ID do último beacon anunciado para evitar repetições contínuas
     private var ultimoBeaconFocadoId: String? = null
 
+    /**
+     * Callback acionado quando um beacon entra (<= 8º) ou sai (> 8º) do foco direto de mira.
+     */
+    var onBeaconNaMiraChanged: ((BeaconAlvo?) -> Unit)? = null
+
     data class BeaconAlvo(
         val no: No,
         val rssi: Int,
@@ -33,6 +38,17 @@ class ExploracaoLivreManager(
         val anguloAlvo: Float,
         val timestampMs: Long = System.currentTimeMillis()
     )
+
+    data class TelemetriaMira(
+        val azimuteCelular: Float,
+        val anguloAlvo: Float,
+        val diferencaErro: Float,
+        val estaNaMira: Boolean,
+        val idBeacon: String,
+        val rssi: Int
+    )
+
+    var onTelemetriaUpdated: ((TelemetriaMira?) -> Unit)? = null
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
@@ -50,7 +66,6 @@ class ExploracaoLivreManager(
 
     /**
      * Atualiza ou adiciona um beacon detectado na varredura BLE.
-     * Funciona tanto com o MAC físico do ESP32 (68:25:DD:48:1F:12) quanto por Nome do Dispositivo.
      */
     fun registrarBeaconDetectado(
         noAtualUsuario: No,
@@ -61,70 +76,110 @@ class ExploracaoLivreManager(
         val anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDetectado)
         val idUnico = noDetectado.deviceName ?: noDetectado.macAddress.ifBlank { noDetectado.id }
 
+        // Mantém a calibração manual do ângulo se já tiver sido ajustado
+        val anguloFinal = beaconsDetectados[idUnico]?.anguloAlvo ?: anguloAlvo
+
         beaconsDetectados[idUnico] = BeaconAlvo(
             no = noDetectado,
             rssi = rssi,
             distanciaEstimada = distancia,
-            anguloAlvo = anguloAlvo
+            anguloAlvo = anguloFinal
         )
     }
 
     /**
+     * Re-calibra a posição relativa do beacon mais próximo para coincidir exatamente com a direção atual do celular.
+     */
+    fun calibrarMiraDoBeacon(azimuteAtual: Float): String? {
+        val entry = beaconsDetectados.entries.firstOrNull() ?: return null
+        val idUnico = entry.key
+        val beacon = entry.value
+
+        // Ajusta as coordenadas virtuais para bater 1:1 com a direção que o celular está apontando
+        val rad = Math.toRadians(azimuteAtual.toDouble())
+        val novoNo = beacon.no.copy(
+            x = Math.sin(rad) * 5.0,
+            y = Math.cos(rad) * 5.0
+        )
+        val novoAngulo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(0.0, 0.0, novoNo.x, novoNo.y)
+
+        beaconsDetectados[idUnico] = beacon.copy(no = novoNo, anguloAlvo = novoAngulo)
+        ultimoBeaconFocadoId = null
+        return novoNo.deviceName ?: novoNo.nomeLocal
+    }
+
+    /**
      * Processa o azimute atual do dispositivo (0º a 360º).
-     * SÓ aciona fala (TTS) e pulso tátil quando o celular estiver EFETIVAMENTE apontando
-     * para a direção do ESP32 (diferença de azimute <= 10º). Caso contrário, permanece em silêncio.
+     * Aplica o gradiente tátil "Quente ou Frio" e aciona pergunta TTS + foco de mira
+     * quando a tolerância for <= 8º.
      *
      * @param azimuteAtual Azimute atual fornecido pelo OrientationManager.
-     * @param toleranceDegrees Tolerância angular de mira (padrão: 10º).
+     * @param toleranceDegrees Tolerância de mira exata (padrão: 8º).
      */
-    fun processarOrientacao(azimuteAtual: Float, toleranceDegrees: Float = 10f) {
-        // Limpa beacons antigos não vistos há mais de 8 segundos
+    fun processarOrientacao(azimuteAtual: Float, toleranceDegrees: Float = 8f) {
         val agora = System.currentTimeMillis()
         beaconsDetectados.entries.removeIf { agora - it.value.timestampMs > 8000 }
 
         if (beaconsDetectados.isEmpty()) {
-            ultimoBeaconFocadoId = null
+            if (ultimoBeaconFocadoId != null) {
+                ultimoBeaconFocadoId = null
+                onBeaconNaMiraChanged?.invoke(null)
+            }
+            onTelemetriaUpdated?.invoke(null)
             hapticManager.stop()
             return
         }
 
-        // Procura se há algum beacon no campo de mira direto (diferença <= toleranceDegrees)
-        var beaconNaMira: BeaconAlvo? = null
-        var menorDiferenca = Float.MAX_VALUE
-
-        for ((_, beacon) in beaconsDetectados) {
-            val diff = HapticManager.calculateAngularDifference(azimuteAtual, beacon.anguloAlvo)
-            if (diff <= toleranceDegrees && diff < menorDiferenca) {
-                menorDiferenca = diff
-                beaconNaMira = beacon
-            }
+        val beaconMaisProximo = beaconsDetectados.values.minByOrNull {
+            HapticManager.calculateAngularDifference(azimuteAtual, it.anguloAlvo)
         }
 
-        if (beaconNaMira != null) {
-            val idBeaconAtual = beaconNaMira.no.deviceName ?: beaconNaMira.no.macAddress.ifBlank { beaconNaMira.no.id }
+        if (beaconMaisProximo != null) {
+            val diferencaMinima = HapticManager.calculateAngularDifference(azimuteAtual, beaconMaisProximo.anguloAlvo)
+            val estaNaMira = diferencaMinima <= toleranceDegrees
 
-            // TRAVA DE DEBOUNCE: Pergunta por TTS e pulso tátil SÓ são acionados se for um novo foco de mira
-            if (ultimoBeaconFocadoId != idBeaconAtual) {
-                ultimoBeaconFocadoId = idBeaconAtual
+            // Telemetria ao vivo para exibição clara na tela
+            val identificador = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.nomeLocal
+            onTelemetriaUpdated?.invoke(
+                TelemetriaMira(
+                    azimuteCelular = azimuteAtual,
+                    anguloAlvo = beaconMaisProximo.anguloAlvo,
+                    diferencaErro = diferencaMinima,
+                    estaNaMira = estaNaMira,
+                    idBeacon = identificador,
+                    rssi = beaconMaisProximo.rssi
+                )
+            )
 
-                // 1. Pulso tátil de confirmação
-                hapticManager.vibrateConfirmation()
+            // Aplica o gradiente tátil Quente ou Frio
+            hapticManager.processarHapticQuenteFrio(diferencaMinima, toleranceDegrees)
 
-                // 2. Pergunta via TTS
-                val nomePonto = beaconNaMira.no.deviceName ?: beaconNaMira.no.nomeLocal
-                falarPerguntaDestino(nomePonto)
+            if (estaNaMira) {
+                val idBeaconAtual = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.macAddress.ifBlank { beaconMaisProximo.no.id }
+
+                if (ultimoBeaconFocadoId != idBeaconAtual) {
+                    ultimoBeaconFocadoId = idBeaconAtual
+
+                    val nomePonto = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.nomeLocal
+                    falarPerguntaDestino(nomePonto)
+                    onBeaconNaMiraChanged?.invoke(beaconMaisProximo)
+                }
+            } else {
+                if (ultimoBeaconFocadoId != null) {
+                    ultimoBeaconFocadoId = null
+                    onBeaconNaMiraChanged?.invoke(null)
+                }
             }
         } else {
-            // Se NÃO estiver apontando para nenhum ESP32 (diferença > 10º):
-            // O app fica em silêncio total e reseta a trava para futuros alinhamentos
-            ultimoBeaconFocadoId = null
+            if (ultimoBeaconFocadoId != null) {
+                ultimoBeaconFocadoId = null
+                onBeaconNaMiraChanged?.invoke(null)
+            }
+            onTelemetriaUpdated?.invoke(null)
             hapticManager.stop()
         }
     }
 
-    /**
-     * Fala a pergunta no formato: "Deseja definir [Nome] como seu destino?"
-     */
     fun falarPerguntaDestino(nomePonto: String) {
         val frase = "Deseja definir $nomePonto como seu destino?"
         Log.d("INNAV_EXPLORACAO", "TTS Pergunta: $frase")
@@ -133,9 +188,6 @@ class ExploracaoLivreManager(
         }
     }
 
-    /**
-     * Enuncia uma mensagem informativa avulsa (ex: abertura de tela).
-     */
     fun falarMensagem(mensagem: String) {
         Log.d("INNAV_EXPLORACAO", "TTS Mensagem: $mensagem")
         if (ttsPronto) {
@@ -143,9 +195,6 @@ class ExploracaoLivreManager(
         }
     }
 
-    /**
-     * Encerra recursos do TTS e limpa estados internos.
-     */
     fun stop() {
         tts?.stop()
         tts?.shutdown()

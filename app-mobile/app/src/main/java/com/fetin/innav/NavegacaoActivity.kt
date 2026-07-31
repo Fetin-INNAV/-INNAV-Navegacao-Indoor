@@ -32,16 +32,8 @@ class NavegacaoActivity : AppCompatActivity() {
     private var azimuteAtual: Float = 0f
     private var anguloAlvo: Float = 0f
 
-    // Configuração dos Nós / Beacons ESP32 (ou Tablet Emulador) com coordenadas 2D (x, y)
     private val noAtualUsuario = No(id = "ESP_PORTARIA", nomeLocal = "Portaria Principal", x = 0.0, y = 0.0)
-    private val noDestinoLab = No(
-        id = "ESP_LAB",
-        nomeLocal = "Laboratório de Hardware",
-        macAddress = "68:25:DD:48:1F:12",
-        deviceName = "Tab S6 Lite de Jhonata",
-        x = 10.0,
-        y = 10.0
-    )
+    private lateinit var noDestinoLab: No
 
     // Scanner BLE em tempo real
     private val scanCallback = object : ScanCallback() {
@@ -71,7 +63,7 @@ class NavegacaoActivity : AppCompatActivity() {
                 hapticManager.adjustVibrationByAzimuth(
                     currentAzimuth = azimuteAtual,
                     targetAngle = anguloAlvo,
-                    toleranceDegrees = 10f
+                    toleranceDegrees = 8f
                 )
 
                 // 5. Gatilho de Chegada: Sinal forte (RSSI > -45 dBm / muito próximo)
@@ -88,6 +80,16 @@ class NavegacaoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_navegacao)
 
+        // Recupera dados do nó de destino dinamicamente via Intent extras
+        val id = intent.getStringExtra("DESTINO_ID") ?: "ESP_LAB"
+        val nome = intent.getStringExtra("DESTINO_NOME") ?: "Laboratório de Hardware"
+        val mac = intent.getStringExtra("DESTINO_MAC") ?: "68:25:DD:48:1F:12"
+        val devName = intent.getStringExtra("DESTINO_NAME") ?: "Tab S6 Lite de Jhonata"
+        val x = intent.getDoubleExtra("DESTINO_X", 10.0)
+        val y = intent.getDoubleExtra("DESTINO_Y", 10.0)
+
+        noDestinoLab = No(id, nome, mac, devName, x, y)
+
         txtSinal = findViewById(R.id.txtSinalAoVivo)
         val btnAjuda = findViewById<Button>(R.id.btnAjuda)
 
@@ -98,14 +100,14 @@ class NavegacaoActivity : AppCompatActivity() {
         // Calcula o ângulo alvo inicial em direção ao nó de destino
         anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDestinoLab)
 
-        // Conecta a leitura contínua de azimute do sensor ao feedback haptic em tempo real
+        // Conecta a leitura contínua de azimute do sensor ao feedback haptic em tempo real (tolerância de 8º)
         orientationManager.onAzimuthChanged = { azimuthDegrees ->
             azimuteAtual = azimuthDegrees
             if (!chegouNoDestino) {
                 hapticManager.adjustVibrationByAzimuth(
                     currentAzimuth = azimuteAtual,
                     targetAngle = anguloAlvo,
-                    toleranceDegrees = 10f
+                    toleranceDegrees = 8f
                 )
             }
         }

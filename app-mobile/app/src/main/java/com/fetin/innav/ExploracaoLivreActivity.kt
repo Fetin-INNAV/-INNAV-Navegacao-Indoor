@@ -5,7 +5,9 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -28,11 +30,14 @@ class ExploracaoLivreActivity : AppCompatActivity() {
     private lateinit var exploracaoLivreManager: ExploracaoLivreManager
 
     private lateinit var txtStatus: TextView
+    private lateinit var btnDefinirDestino: Button
     private var azimuteAtual = 0f
+
+    private var noSelecionadoNaMira: No? = null
 
     private val usuarioPosicao = No(id = "USER", nomeLocal = "Posição Atual", x = 0.0, y = 0.0)
 
-    // Checkpoints cadastrados para busca (Compatíveis tanto com o ESP32 físico via MAC quanto Tablet via Nome)
+    // Checkpoints cadastrados para busca
     private val checkpointsConhecidos = listOf(
         No(
             id = "ESP_01",
@@ -79,65 +84,127 @@ class ExploracaoLivreActivity : AppCompatActivity() {
                 noDetectado = noEncontrado,
                 rssi = rssi
             )
-
-            val identificador = deviceName ?: macAddress
-            val statusInversao = if (orientationManager.inverterAzimute) " [180° Invertido]" else ""
-            runOnUiThread {
-                txtStatus.text = "Sinal [$identificador]: $rssi dBm$statusInversao\nAponte o topo do celular para explorar."
-            }
         }
     }
 
-    @SuppressLint("MissingPermission")
+    @SuppressLint("MissingPermission", "DefaultLocale")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_exploracao_livre)
 
         txtStatus = findViewById(R.id.txtStatusExploracao)
+        btnDefinirDestino = findViewById(R.id.btnDefinirDestino)
         val btnSair = findViewById<Button>(R.id.btnSairExploracao)
-        val btnCalibrar = findViewById<Button>(R.id.btnCalibrarBussola)
+        val btnCalibrarBussola = findViewById<Button>(R.id.btnCalibrarBussola)
+        val btnCalibrarMira = findViewById<Button>(R.id.btnCalibrarMira)
 
         // Inicializa gerenciadores
         hapticManager = HapticManager(this)
         orientationManager = OrientationManager(this)
         exploracaoLivreManager = ExploracaoLivreManager(this, hapticManager)
 
-        // Botão para alternar a inversão de 180° em tempo real (salva no dispositivo)
-        btnCalibrar.setOnClickListener {
+        // Telemetria ao vivo exibida na tela
+        exploracaoLivreManager.onTelemetriaUpdated = { telemetria ->
+            runOnUiThread {
+                if (telemetria != null) {
+                    val statusInversao = if (orientationManager.inverterAzimute) " [180° Inv]" else ""
+                    val statusMira = if (telemetria.estaNaMira) "🎯 NA MIRA (<= 8°)" else if (telemetria.diferencaErro <= 20f) "🔥 QUENTE" else if (telemetria.diferencaErro <= 45f) "🌤️ MORNO" else "❄️ FRIO (> 45°)"
+
+                    txtStatus.text = "Sinal [${telemetria.idBeacon}]: ${telemetria.rssi} dBm$statusInversao\n" +
+                            "Bússola: %.0f° | Alvo: %.0f° | Erro: %.0f°\n$statusMira".format(
+                                telemetria.azimuteCelular,
+                                telemetria.anguloAlvo,
+                                telemetria.diferencaErro
+                            )
+                } else {
+                    txtStatus.text = "Procurando sinal BLE..."
+                }
+            }
+        }
+
+        // Callback quando entra (<= 8º) ou sai (> 8º) da mira
+        exploracaoLivreManager.onBeaconNaMiraChanged = { beaconAlvo ->
+            runOnUiThread {
+                if (beaconAlvo != null) {
+                    noSelecionadoNaMira = beaconAlvo.no
+                    val nomeExibicao = beaconAlvo.no.deviceName ?: beaconAlvo.no.nomeLocal
+                    btnDefinirDestino.text = "📍 DEFINIR $nomeExibicao COMO DESTINO"
+                    btnDefinirDestino.visibility = View.VISIBLE
+                } else {
+                    noSelecionadoNaMira = null
+                    btnDefinirDestino.visibility = View.GONE
+                }
+            }
+        }
+
+        // Botão para travar o destino selecionado e iniciar a Navegação Orientada
+        btnDefinirDestino.setOnClickListener {
+            noSelecionadoNaMira?.let { noDestino ->
+                iniciarNavegacaoOrientada(noDestino)
+            }
+        }
+
+        // Botão 1: Inverter Bússola 180°
+        btnCalibrarBussola.setOnClickListener {
             val estaInvertido = orientationManager.alternarInversao()
             val msg = if (estaInvertido) "Bússola invertida em 180 graus" else "Bússola na orientação padrão"
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             exploracaoLivreManager.falarMensagem(msg)
         }
 
-        // 1. Mensagem inicial de voz informativa ao entrar na tela
+        // Botão 2: Calibrar a Mira do Beacon para a direção que o celular está apontando agora (ideal para teste de bancada)
+        btnCalibrarMira.setOnClickListener {
+            val nome = exploracaoLivreManager.calibrarMiraDoBeacon(azimuteAtual)
+            val msg = if (nome != null) "Mira calibrada 1:1 para $nome" else "Nenhum beacon detectado para calibrar"
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            exploracaoLivreManager.falarMensagem(msg)
+        }
+
+        // Mensagem inicial de voz
         window.decorView.postDelayed({
             exploracaoLivreManager.falarMensagem("Modo de exploração livre ativado. Aponte o celular ao seu redor.")
         }, 800)
 
-        // 2. Conecta o sensor de orientação
+        // Conecta o sensor de orientação com remapeamento permanente para modo retrato (pitch corrigido)
         orientationManager.onAzimuthChanged = { azimuth ->
             azimuteAtual = azimuth
-            exploracaoLivreManager.processarOrientacao(azimuteAtual, toleranceDegrees = 10f)
+            exploracaoLivreManager.processarOrientacao(azimuteAtual, toleranceDegrees = 8f)
         }
 
-        // 3. Inicia o radar BLE exclusivo
+        // Inicia o radar BLE
         bleScanner?.startScan(scanCallback)
 
-        // 4. Ação do Botão "Sair": Encerra imediatamente varredura, áudio e navega de volta
+        // Botão "Sair"
         btnSair.setOnClickListener {
             encerrarExploracaoEVoltar()
         }
     }
 
     @SuppressLint("MissingPermission")
-    private fun encerrarExploracaoEVoltar() {
-        // Interrompe imediatamente o scanner BLE e qualquer áudio/vibração ativa
+    private fun iniciarNavegacaoOrientada(noDestino: No) {
         bleScanner?.stopScan(scanCallback)
         exploracaoLivreManager.stop()
         orientationManager.stopListening()
         hapticManager.stop()
 
+        val intent = Intent(this, NavegacaoActivity::class.java).apply {
+            putExtra("DESTINO_ID", noDestino.id)
+            putExtra("DESTINO_NOME", noDestino.nomeLocal)
+            putExtra("DESTINO_MAC", noDestino.macAddress)
+            putExtra("DESTINO_NAME", noDestino.deviceName)
+            putExtra("DESTINO_X", noDestino.x)
+            putExtra("DESTINO_Y", noDestino.y)
+        }
+        startActivity(intent)
+        finish()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun encerrarExploracaoEVoltar() {
+        bleScanner?.stopScan(scanCallback)
+        exploracaoLivreManager.stop()
+        orientationManager.stopListening()
+        hapticManager.stop()
         finish()
     }
 

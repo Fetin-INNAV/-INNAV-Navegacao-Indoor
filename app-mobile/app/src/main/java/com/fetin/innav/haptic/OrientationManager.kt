@@ -11,8 +11,8 @@ import android.os.Build
  * Classe responsável por ler a orientação do dispositivo através de Sensor.TYPE_ROTATION_VECTOR
  * e retornar o azimute em graus (0º a 360º) alinhado com a borda superior (topo) do smartphone.
  *
- * Suporta persistência por SharedPreferences para que cada aparelho (ex: Samsung S20 FE)
- * salve sua calibração individual de 180º.
+ * Utiliza o remapeamento de coordenadas (AXIS_X, AXIS_Z) para garantir a estabilidade do azimute em modo Retrato
+ * (segurando o celular em pé ou inclinado na mão), evitando distorções de 90º provocadas pela inclinação (pitch).
  */
 class OrientationManager(private val context: Context) : SensorEventListener {
 
@@ -33,11 +33,6 @@ class OrientationManager(private val context: Context) : SensorEventListener {
     var inverterAzimute: Boolean
         get() = prefs.getBoolean("inverter_azimute", checarInversaoPadraoPorHardware())
         set(value) = prefs.edit().putBoolean("inverter_azimute", value).apply()
-
-    /**
-     * Flag para utilizar o remapeamento de coordenadas do SensorManager (Eixo Y no topo do aparelho).
-     */
-    var usarRemapeamentoCoordenadas: Boolean = false
 
     /**
      * Listener para receber o azimute atualizado em graus [0, 360).
@@ -97,29 +92,25 @@ class OrientationManager(private val context: Context) : SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null || event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
 
-        // Extrai a matriz de rotação a partir do vetor de rotação
+        // 1. Extrai a matriz de rotação do sensor
         SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
 
-        // Se ativado, remapa o sistema de coordenadas para garantir que o Eixo Y aponte para o topo do celular
-        val matrixFinal = if (usarRemapeamentoCoordenadas) {
-            SensorManager.remapCoordinateSystem(
-                rotationMatrix,
-                SensorManager.AXIS_X,
-                SensorManager.AXIS_Z,
-                remappedMatrix
-            )
+        // 2. Remapeia as coordenadas para o modo Retrato (segurando o celular na mão)
+        // Isso evita o salto de 90º no azimute causado pela elevação do celular
+        SensorManager.remapCoordinateSystem(
+            rotationMatrix,
+            SensorManager.AXIS_X,
+            SensorManager.AXIS_Z,
             remappedMatrix
-        } else {
-            rotationMatrix
-        }
+        )
 
-        // Calcula a orientação [azimute, pitch, roll] em radianos
-        SensorManager.getOrientation(matrixFinal, orientationAngles)
+        // 3. Obtém os ângulos de orientação [azimute, pitch, roll]
+        SensorManager.getOrientation(remappedMatrix, orientationAngles)
 
-        // Converte o azimute em radianos para graus e normaliza no intervalo 0º..360º
+        // 4. Converte radianos para graus normalizados entre [0, 360)
         var azimuteEmGraus = (Math.toDegrees(orientationAngles[0].toDouble()).toFloat() + 360f) % 360f
 
-        // Aplica a inversão de 180º se ativada
+        // 5. Aplica a inversão de 180º se ativada
         if (inverterAzimute) {
             azimuteEmGraus = (azimuteEmGraus + 180f) % 360f
         }

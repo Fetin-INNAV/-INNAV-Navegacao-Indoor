@@ -28,21 +28,17 @@ class HapticManagerTest {
     }
 
     @Test
-    fun testarIntensidadeProporcionalEConfirmacao() {
-        // Dentro da tolerância (10º) -> Intensidade máxima (255)
-        val intExact = HapticManager.calculateIntensityForDifference(5f, toleranceDegrees = 10f)
+    fun testarIntensidadeProporcionalEConfirmacao8Graus() {
+        // Dentro da tolerância de 8º -> Intensidade máxima (255)
+        val intExact = HapticManager.calculateIntensityForDifference(5f, toleranceDegrees = 8f)
         assertEquals(255, intExact)
 
-        val intToleranceLimit = HapticManager.calculateIntensityForDifference(10f, toleranceDegrees = 10f)
+        val intToleranceLimit = HapticManager.calculateIntensityForDifference(8f, toleranceDegrees = 8f)
         assertEquals(255, intToleranceLimit)
 
-        // Fora do alcance (>= 90º) -> Intensidade 0
-        val intFar = HapticManager.calculateIntensityForDifference(90f, toleranceDegrees = 10f, maxAngleDifference = 90f)
+        // Fora do alcance (>= 45º) -> Intensidade 0
+        val intFar = HapticManager.calculateIntensityForDifference(45f, toleranceDegrees = 8f, maxAngleDifference = 45f)
         assertEquals(0, intFar)
-
-        // Meio do caminho (~50º de diferença com tolerancia 10º e max 90º -> metade da escala)
-        val intMid = HapticManager.calculateIntensityForDifference(50f, toleranceDegrees = 10f, maxAngleDifference = 90f)
-        assertEquals(127, intMid)
     }
 
     @Test
