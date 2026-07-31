@@ -23,16 +23,30 @@
         android:layout_height="wrap_content"
         android:text="Aponte o celular ao seu redor..."
         android:textColor="#00FF00"
-        android:textSize="22sp"
+        android:textSize="20sp"
         android:gravity="center"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="64dp" />
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Botão de Calibração / Inversão de Bússola 180° -->
+    <Button
+        android:id="@+id/btnCalibrarBussola"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        app:cornerRadius="16dp"
+        android:backgroundTint="#FF9800"
+        android:text="🔄 INVERTER BÚSSOLA (180°)"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp"
+        android:contentDescription="Botão para inverter a orientação da bússola em 180 graus para modelos de celular com sensores invertidos." />
 
     <!-- Botão Sair centralizado e acessível -->
     <Button
         android:id="@+id/btnSairExploracao"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
+        android:layout_height="110dp"
         app:cornerRadius="24dp"
         android:backgroundTint="#F44336"
         android:text="SAIR"

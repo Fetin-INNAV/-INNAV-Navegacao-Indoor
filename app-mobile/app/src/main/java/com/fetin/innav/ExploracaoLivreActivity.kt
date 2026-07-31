@@ -8,6 +8,7 @@ import android.content.Context
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.fetin.innav.haptic.ExploracaoLivreManager
 import com.fetin.innav.haptic.HapticManager
@@ -80,8 +81,9 @@ class ExploracaoLivreActivity : AppCompatActivity() {
             )
 
             val identificador = deviceName ?: macAddress
+            val statusInversao = if (orientationManager.inverterAzimute) " [180° Invertido]" else ""
             runOnUiThread {
-                txtStatus.text = "Sinal [$identificador]: $rssi dBm\nAponte o topo do celular para explorar."
+                txtStatus.text = "Sinal [$identificador]: $rssi dBm$statusInversao\nAponte o topo do celular para explorar."
             }
         }
     }
@@ -93,11 +95,20 @@ class ExploracaoLivreActivity : AppCompatActivity() {
 
         txtStatus = findViewById(R.id.txtStatusExploracao)
         val btnSair = findViewById<Button>(R.id.btnSairExploracao)
+        val btnCalibrar = findViewById<Button>(R.id.btnCalibrarBussola)
 
         // Inicializa gerenciadores
         hapticManager = HapticManager(this)
         orientationManager = OrientationManager(this)
         exploracaoLivreManager = ExploracaoLivreManager(this, hapticManager)
+
+        // Botão para alternar a inversão de 180° em tempo real (salva no dispositivo)
+        btnCalibrar.setOnClickListener {
+            val estaInvertido = orientationManager.alternarInversao()
+            val msg = if (estaInvertido) "Bússola invertida em 180 graus" else "Bússola na orientação padrão"
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            exploracaoLivreManager.falarMensagem(msg)
+        }
 
         // 1. Mensagem inicial de voz informativa ao entrar na tela
         window.decorView.postDelayed({
