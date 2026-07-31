@@ -1,10 +1,11 @@
 package com.fetin.innav.haptic
 
 import com.fetin.innav.models.No
+import kotlin.math.abs
 
 /**
- * Utilitário para cálculos de navegação indoor: estimativa de distância por RSSI
- * e determinação dinâmica do azimute/ângulo alvo em direção ao ESP32.
+ * Utilitário para cálculos de navegação indoor: estimativa de distância por RSSI,
+ * azimute alvo dinâmico e diferença angular normalizada no intervalo [-180º, 180º].
  */
 object CalculadoraAnguloNavegacao {
 
@@ -31,12 +32,6 @@ object CalculadoraAnguloNavegacao {
      * 90º = Leste (+X)
      * 180º = Sul (-Y)
      * 270º = Oeste (-X)
-     *
-     * @param xAtual Coordenada X atual do usuário.
-     * @param yAtual Coordenada Y atual do usuário.
-     * @param xAlvo Coordenada X do ESP32/Nó de destino.
-     * @param yAlvo Coordenada Y do ESP32/Nó de destino.
-     * @return Ângulo alvo em graus normalizado entre [0, 360).
      */
     fun calcularAnguloAlvo(xAtual: Double, yAtual: Double, xAlvo: Double, yAlvo: Double): Float {
         val dx = xAlvo - xAtual
@@ -51,5 +46,21 @@ object CalculadoraAnguloNavegacao {
      */
     fun calcularAnguloAlvo(noAtual: No, noDestino: No): Float {
         return calcularAnguloAlvo(noAtual.x, noAtual.y, noDestino.x, noDestino.y)
+    }
+
+    /**
+     * Calcula a diferença angular com sinal entre o azimute do alvo e o azimute do dispositivo.
+     * Normaliza estritamente no intervalo [-180, 180] graus usando a fórmula:
+     * diferenca = (anguloAlvo - azimuthDispositivo + 540) % 360 - 180
+     */
+    fun calcularDiferencaAngularComSinal(anguloAlvo: Float, azimuthDispositivo: Float): Float {
+        return ((anguloAlvo - azimuthDispositivo + 540f) % 360f) - 180f
+    }
+
+    /**
+     * Retorna a menor distância angular absoluta entre o azimute do dispositivo e o azimute do alvo [0º, 180º].
+     */
+    fun calcularDistanciaAngularAbsoluta(anguloAlvo: Float, azimuthDispositivo: Float): Float {
+        return abs(calcularDiferencaAngularComSinal(anguloAlvo, azimuthDispositivo))
     }
 }

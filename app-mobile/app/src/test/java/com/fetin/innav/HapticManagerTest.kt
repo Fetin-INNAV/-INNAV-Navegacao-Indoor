@@ -12,7 +12,14 @@ class HapticManagerTest {
 
     @Test
     fun testarCalculoDiferencaAngular() {
-        // Testes diretos de diferença angular
+        // Testes da fórmula: (anguloAlvo - azimuthDispositivo + 540) % 360 - 180
+        assertEquals(0f, CalculadoraAnguloNavegacao.calcularDiferencaAngularComSinal(90f, 90f), 0.01f)
+        assertEquals(-10f, CalculadoraAnguloNavegacao.calcularDiferencaAngularComSinal(90f, 100f), 0.01f)
+        assertEquals(10f, CalculadoraAnguloNavegacao.calcularDiferencaAngularComSinal(10f, 355f), 0.01f)
+        assertEquals(-10f, CalculadoraAnguloNavegacao.calcularDiferencaAngularComSinal(355f, 5f), 0.01f)
+        assertEquals(180f, Math.abs(CalculadoraAnguloNavegacao.calcularDiferencaAngularComSinal(0f, 180f)), 0.01f)
+
+        // Distância angular absoluta em HapticManager
         assertEquals(0f, HapticManager.calculateAngularDifference(90f, 90f), 0.01f)
         assertEquals(10f, HapticManager.calculateAngularDifference(355f, 5f), 0.01f)
         assertEquals(10f, HapticManager.calculateAngularDifference(5f, 355f), 0.01f)

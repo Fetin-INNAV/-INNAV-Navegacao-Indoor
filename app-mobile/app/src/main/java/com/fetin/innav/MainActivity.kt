@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                     Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está na: Portaria Principal ($idDispositivo)")
 
-                    val calculadora = CalculadoraRota(mapaInatel)
+                    val calculadora =CalculadoraRota(mapaInatel)
                     val rotaCalculada: List<Aresta> = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
 
                     Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")

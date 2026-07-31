@@ -115,12 +115,14 @@ class HapticManager(context: Context) {
 
     companion object {
         /**
-         * Comparação angular: calcula a menor diferença em graus entre dois azimutes (0º a 360º).
-         * Retorna um valor no intervalo [0, 180].
+         * Comparação angular: calcula a menor distância angular em graus entre dois azimutes.
+         * Garante a normalização estrita no intervalo [-180, 180] graus usando a fórmula:
+         * diferenca = (targetAngle - currentAzimuth + 540) % 360 - 180
+         * Retorna a distância angular em módulo [0, 180].
          */
         fun calculateAngularDifference(currentAzimuth: Float, targetAngle: Float): Float {
-            val diff = abs(currentAzimuth - targetAngle) % 360f
-            return if (diff > 180f) 360f - diff else diff
+            val diferencaComSinal = ((targetAngle - currentAzimuth + 540f) % 360f) - 180f
+            return abs(diferencaComSinal)
         }
 
         /**

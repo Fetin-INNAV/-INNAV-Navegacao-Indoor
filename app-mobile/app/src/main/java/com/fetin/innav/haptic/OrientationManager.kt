@@ -8,7 +8,7 @@ import android.hardware.SensorManager
 
 /**
  * Classe responsável por ler a orientação do dispositivo através de Sensor.TYPE_ROTATION_VECTOR
- * e retornar o azimute em graus (0º a 360º).
+ * e retornar o azimute em graus (0º a 360º) alinhado com a borda superior (topo) do smartphone.
  */
 class OrientationManager(context: Context) : SensorEventListener {
 
@@ -16,9 +16,22 @@ class OrientationManager(context: Context) : SensorEventListener {
     private val rotationVectorSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
 
     private val rotationMatrix = FloatArray(9)
+    private val remappedMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
 
     private var isListening = false
+
+    /**
+     * Flag para inverter o azimute em 180º.
+     * Útil para modelos como Samsung S20 FE onde o fusor de sensores da fabricante
+     * pode reportar o azimute invertido em relação ao topo do dispositivo.
+     */
+    var inverterAzimute: Boolean = false
+
+    /**
+     * Flag para utilizar o remapeamento de coordenadas do SensorManager (Eixo Y no topo do aparelho).
+     */
+    var usarRemapeamentoCoordenadas: Boolean = false
 
     /**
      * Listener para receber o azimute atualizado em graus [0, 360).
@@ -57,14 +70,32 @@ class OrientationManager(context: Context) : SensorEventListener {
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null || event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
 
-        // Extrai a matriz de rotação a partir dos valores do vetor de rotação
+        // Extrai a matriz de rotação a partir do vetor de rotação
         SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
 
-        // Calcula a orientação (azimute, pitch, roll) em radianos
-        SensorManager.getOrientation(rotationMatrix, orientationAngles)
+        // Se ativado, remapa o sistema de coordenadas para garantir que o Eixo Y aponte para o topo do celular
+        val matrixFinal = if (usarRemapeamentoCoordenadas) {
+            SensorManager.remapCoordinateSystem(
+                rotationMatrix,
+                SensorManager.AXIS_X,
+                SensorManager.AXIS_Z,
+                remappedMatrix
+            )
+            remappedMatrix
+        } else {
+            rotationMatrix
+        }
 
-        // Converte o azimute (orientationAngles[0]) em radianos para graus e normaliza entre 0º e 360º
-        val azimuteEmGraus = (Math.toDegrees(orientationAngles[0].toDouble()).toFloat() + 360f) % 360f
+        // Calcula a orientação [azimute, pitch, roll] em radianos
+        SensorManager.getOrientation(matrixFinal, orientationAngles)
+
+        // Converte o azimute em radianos para graus e normaliza no intervalo 0º..360º
+        var azimuteEmGraus = (Math.toDegrees(orientationAngles[0].toDouble()).toFloat() + 360f) % 360f
+
+        // Aplica a inversão de 180º se ativada (ex: para Samsung S20 FE)
+        if (inverterAzimute) {
+            azimuteEmGraus = (azimuteEmGraus + 180f) % 360f
+        }
 
         onAzimuthChanged?.invoke(azimuteEmGraus)
     }
