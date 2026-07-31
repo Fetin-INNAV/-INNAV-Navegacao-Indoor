@@ -41,6 +41,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".ExploracaoLivreActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ChegadaActivity"
             android:exported="false" />
 

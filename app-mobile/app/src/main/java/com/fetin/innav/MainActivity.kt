@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -17,12 +18,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import java.util.Locale
-import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 
-// Importando a sua pasta de modelos onde estão o Grafo e os Nós
-import com.fetin.innav.models.*
+// Importação explícita de todos os modelos necessários
+import com.fetin.innav.models.Aresta
+import com.fetin.innav.models.CalculadoraRota
+import com.fetin.innav.models.Grafo
+import com.fetin.innav.models.No
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
@@ -33,66 +34,43 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private val bleScanner by lazy { bluetoothAdapter?.bluetoothLeScanner }
 
-    // Motor de Voz do Android (Text-to-Speech)
     private lateinit var tts: TextToSpeech
 
-    // Variável de segurança: impede que o sistema calcule a rota repetidamente
     private var ultimoCheckpointVisitado = ""
 
-    // Controle da Fase 2: Modo Rota vs Modo Exploração Livre
-    private var modoExploracaoLivre = false
-
-    // Instanciamos o mapa físico
+    // Mapa físico de nós
     private val mapaInatel = Grafo()
     private lateinit var portaria: No
     private lateinit var corredor: No
     private lateinit var labHardware: No
 
-    // O Radar com a Lógica de Navegação
+    // Scanner BLE do Menu Principal
     private val scanCallback = object : ScanCallback() {
+        @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             super.onScanResult(callbackType, result)
 
             val macAddress = result.device.address
+            val deviceName = runCatching { result.device.name }.getOrNull() ?: result.scanRecord?.deviceName
             val rssi = result.rssi
 
-            // O MAC oficial do seu ESP32 (Altere para o MAC real do ESP32 que está com você)
-            val macEspPortaria = "68:25:DD:48:1F:12"
+            if (portaria.correspondeAoDispositivo(macAddress, deviceName) && rssi > -60) {
+                val idDispositivo = deviceName ?: macAddress
 
-            // Se encontrou o ESP32 com um sinal forte (Zona de Gatilho)
-            if (macAddress == macEspPortaria && rssi > -60) {
+                if (ultimoCheckpointVisitado != idDispositivo) {
+                    ultimoCheckpointVisitado = idDispositivo
 
-                // Verifica se já estávamos parados aqui
-                if (ultimoCheckpointVisitado != macEspPortaria) {
-                    ultimoCheckpointVisitado = macEspPortaria
+                    Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está na: Portaria Principal ($idDispositivo)")
 
-                    Log.d("INNAV_ROTA", "===================================================")
-                    Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está na: Portaria Principal")
-                    Log.d("INNAV_ROTA", "Força do Sinal: $rssi dBm")
+                    val calculadora = CalculadoraRota(mapaInatel)
+                    val rotaCalculada: List<Aresta> = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
 
-                    if (modoExploracaoLivre) {
-                        // FASE 2.1: Modo de Exploração (Dijkstra desativado)
-                        val aviso = "Você está passando pela Portaria Principal."
-                        Log.d("INNAV_ROTA", aviso)
-                        falar(aviso)
-                        runOnUiThread { Toast.makeText(this@MainActivity, aviso, Toast.LENGTH_LONG).show() }
-                    } else {
-                        // FASE 2.2: Rota Específica (Aciona Dijkstra)
-                        Log.d("INNAV_ROTA", "Acionando o algoritmo de Dijkstra...")
-
-                        val calculadora = CalculadoraRota(mapaInatel)
-                        val rotaCalculada = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
-
-                        Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")
-
-
-                        rotaCalculada?.forEach { aresta ->
-                            Log.d("INNAV_ROTA", "-> ${aresta.instrucao}")
-                        }
-
-                        runOnUiThread { Toast.makeText(this@MainActivity, "📍 Rota Calculada!", Toast.LENGTH_LONG).show() }
+                    Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")
+                    rotaCalculada.forEach { aresta: Aresta ->
+                        Log.d("INNAV_ROTA", "-> ${aresta.instrucao}")
                     }
-                    Log.d("INNAV_ROTA", "===================================================")
+
+                    runOnUiThread { Toast.makeText(this@MainActivity, "📍 Rota Calculada!", Toast.LENGTH_LONG).show() }
                 }
             }
         }
@@ -110,7 +88,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Inicializa o motor de voz nativo do Android
         tts = TextToSpeech(this, this)
 
         montarMapaFisico()
@@ -123,61 +100,74 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val btnExploracao = findViewById<Button>(R.id.btnExploracaoLivre)
 
         btnDestino.setOnClickListener {
-            modoExploracaoLivre = false
-            val mensagem = "Selecione o seu destino na tela."
-            falar(mensagem)
+            // Pausa o TTS do menu principal para evitar conflito de áudio
+            pararAudioETerminarScanner()
 
-            // A mágica acontece aqui: O Intent abre a DestinosActivity
+            falar("Selecione o seu destino na tela.")
+
             val intent = Intent(this, DestinosActivity::class.java)
             startActivity(intent)
         }
 
         btnExploracao.setOnClickListener {
-            modoExploracaoLivre = true
-            val mensagem = "Modo de exploração ativado. Caminhe livremente."
-            falar(mensagem)
-            Toast.makeText(this, "Modo Exploração Ativado", Toast.LENGTH_SHORT).show()
+            // Interrompe qualquer áudio ou scanner ativo no menu principal antes de navegar
+            pararAudioETerminarScanner()
+
+            // Navega para a nova tela exclusiva do modo Exploração Livre
+            val intent = Intent(this, ExploracaoLivreActivity::class.java)
+            startActivity(intent)
         }
     }
 
-    // Função auxiliar para converter Texto em Voz
+    @SuppressLint("MissingPermission")
+    private fun pararAudioETerminarScanner() {
+        if (::tts.isInitialized) {
+            tts.stop()
+        }
+        bleScanner?.stopScan(scanCallback)
+    }
+
     private fun falar(texto: String) {
         if (::tts.isInitialized) {
-            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "")
+            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "MAIN_TTS_ID")
         }
     }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            // Configura o idioma da voz para Português do Brasil
             val result = tts.setLanguage(Locale("pt", "BR"))
-
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("INNAV_TTS", "Idioma não suportado ou faltando dados.")
-            } else {
-                Log.d("INNAV_TTS", "Sistema de voz inicializado com sucesso.")
-
-                // A SOLUÇÃO: Um pequeno atraso de 800 milissegundos (0.8 segundos)
-                // Isso dá tempo para o motor de áudio do telemóvel "aquecer"
-                Handler(Looper.getMainLooper()).postDelayed({
-                    val instrucaoInicial = "Você pode escolher seu destino apertando a parte superior da tela, ou usar o modo livre na parte inferior da tela."
-                    falar(instrucaoInicial)
-                }, 1500)
+            if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
+                falar("Você pode escolher seu destino apertando a parte superior da tela, ou usar o modo livre na parte inferior da tela.")
             }
-        } else {
-            Log.e("INNAV_TTS", "Falha ao inicializar o TextToSpeech.")
         }
     }
 
     private fun montarMapaFisico() {
-        portaria = No(id = "ESP_01", nomeLocal = "Portaria Principal")
-        corredor = No(id = "ESP_02", nomeLocal = "Corredor Central")
-        labHardware = No(id = "ESP_03", nomeLocal = "Laboratório de Hardware")
+        portaria = No(
+            id = "ESP_01",
+            nomeLocal = "Portaria Principal",
+            macAddress = "68:25:DD:48:1F:12",
+            deviceName = "Tab S6 Lite de Jhonata",
+            x = 0.0,
+            y = 5.0
+        )
+        corredor = No(
+            id = "ESP_02",
+            nomeLocal = "Corredor Central",
+            x = 5.0,
+            y = 5.0
+        )
+        labHardware = No(
+            id = "ESP_03",
+            nomeLocal = "Laboratório de Hardware",
+            macAddress = "68:25:DD:48:1F:12",
+            deviceName = "Tab S6 Lite de Jhonata",
+            x = 10.0,
+            y = 10.0
+        )
 
         mapaInatel.adicionarAresta(origem = portaria, destino = corredor, distancia = 10.0, instrucao = "Siga 10 metros em frente pelo corredor principal.")
         mapaInatel.adicionarAresta(origem = corredor, destino = labHardware, distancia = 5.0, instrucao = "Vire à direita e ande 5 metros para chegar ao laboratório.")
-
-        Log.d("INNAV_ROTA", "Mapa carregado na memória. Pronto para navegar.")
     }
 
     private fun pedirPermissoesBluetooth() {
@@ -201,12 +191,28 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    override fun onResume() {
+        super.onResume()
+        iniciarScannerBluetooth()
+    }
+
+    @SuppressLint("MissingPermission")
+    override fun onPause() {
+        super.onPause()
+        bleScanner?.stopScan(scanCallback)
+        if (::tts.isInitialized) {
+            tts.stop()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
     override fun onDestroy() {
-        // É importante desligar a voz quando o app fechar para não travar a memória
         if (::tts.isInitialized) {
             tts.stop()
             tts.shutdown()
         }
+        bleScanner?.stopScan(scanCallback)
         super.onDestroy()
     }
 }
