@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                     Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está na: Portaria Principal ($idDispositivo)")
 
-                    val calculadora =CalculadoraRota(mapaInatel)
+                    val calculadora = CalculadoraRota(mapaInatel)
                     val rotaCalculada: List<Aresta> = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
 
                     Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")
@@ -99,23 +99,63 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val btnDestino = findViewById<Button>(R.id.btnEscolherDestino)
         val btnExploracao = findViewById<Button>(R.id.btnExploracaoLivre)
 
-        btnDestino.setOnClickListener {
-            // Pausa o TTS do menu principal para evitar conflito de áudio
-            pararAudioETerminarScanner()
+        configurarBotaoComDuploToque(
+            button = btnDestino,
+            nomeBotao = "Definir Destino",
+            falaConfirmacao = "Iniciando Escolha de Destino",
+            acaoDuploClique = {
+                val intent = Intent(this, DestinosActivity::class.java)
+                startActivity(intent)
+            }
+        )
 
-            falar("Selecione o seu destino na tela.")
+        configurarBotaoComDuploToque(
+            button = btnExploracao,
+            nomeBotao = "Exploração Livre",
+            falaConfirmacao = "Iniciando Exploração Livre",
+            acaoDuploClique = {
+                val intent = Intent(this, ExploracaoLivreActivity::class.java)
+                startActivity(intent)
+            }
+        )
+    }
 
-            val intent = Intent(this, DestinosActivity::class.java)
-            startActivity(intent)
+    /**
+     * Configura o comportamento de foco (primeiro clique = apenas anuncia nome)
+     * e seleção por duplo clique (dois toques rápidos = confirma e executa a ação).
+     */
+    private fun configurarBotaoComDuploToque(
+        button: Button,
+        nomeBotao: String,
+        falaConfirmacao: String,
+        acaoDuploClique: () -> Unit
+    ) {
+        var ultimoClique = 0L
+        val intervaloDuploClique = 500L // 500ms de tolerância para o segundo toque
+
+        button.setOnClickListener {
+            val agora = System.currentTimeMillis()
+            if (agora - ultimoClique <= intervaloDuploClique) {
+                // SEGUNDO CLIQUE (DUPLO TOQUE): Confirmação de seleção
+                ultimoClique = 0L
+                falar(falaConfirmacao)
+
+                button.postDelayed({
+                    pararAudioETerminarScanner()
+                    acaoDuploClique()
+                }, 350)
+            } else {
+                // PRIMEIRA CLIQUE / FOCO: Anuncia apenas o nome curto do botão
+                ultimoClique = agora
+                falar(nomeBotao)
+            }
         }
 
-        btnExploracao.setOnClickListener {
-            // Interrompe qualquer áudio ou scanner ativo no menu principal antes de navegar
-            pararAudioETerminarScanner()
-
-            // Navega para a nova tela exclusiva do modo Exploração Livre
-            val intent = Intent(this, ExploracaoLivreActivity::class.java)
-            startActivity(intent)
+        // Anuncia o nome do botão quando o foco de acessibilidade mudar
+        button.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                falar(nomeBotao)
+            }
         }
     }
 
@@ -127,8 +167,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         bleScanner?.stopScan(scanCallback)
     }
 
+    /**
+     * Emite áudio via TTS cancelando e interrompendo qualquer fala anterior imediatamente (QUEUE_FLUSH).
+     */
     private fun falar(texto: String) {
         if (::tts.isInitialized) {
+            tts.stop() // Garante parada imediata da fala anterior
             tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "MAIN_TTS_ID")
         }
     }
@@ -137,7 +181,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (status == TextToSpeech.SUCCESS) {
             val result = tts.setLanguage(Locale("pt", "BR"))
             if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
-                falar("Você pode escolher seu destino apertando a parte superior da tela, ou usar o modo livre na parte inferior da tela.")
+                // Mensagem de abertura curta e objetiva
+                falar("INNAV iniciado. Selecione uma opção.")
             }
         }
     }

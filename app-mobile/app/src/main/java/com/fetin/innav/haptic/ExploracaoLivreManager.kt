@@ -5,23 +5,26 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import com.fetin.innav.models.No
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Gerenciador do modo "Exploração Livre":
  * Varre continuamente os beacons/ESP32 detectados, escuta a orientação do dispositivo,
  * aplica a lógica tátil "Quente ou Frio" e anuncia por voz (TTS) o nó selecionado
  * com precisão de mira de ±8º.
+ *
+ * Utiliza ConcurrentHashMap para garantir segurança concorrente entre as threads do BLE e dos Sensores.
  */
 class ExploracaoLivreManager(
-    private val context: Context,
+    context: Context,
     private val hapticManager: HapticManager
 ) : TextToSpeech.OnInitListener {
 
-    private var tts: TextToSpeech? = TextToSpeech(context, this)
+    private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
     private var ttsPronto = false
 
-    // Registra os beacons detectados recentemente (ID -> Dados do Beacon)
-    private val beaconsDetectados = mutableMapOf<String, BeaconAlvo>()
+    // Registra os beacons detectados recentemente em um mapa thread-safe
+    private val beaconsDetectados = ConcurrentHashMap<String, BeaconAlvo>()
 
     // Trava de Debounce: ID do último beacon anunciado para evitar repetições contínuas
     private var ultimoBeaconFocadoId: String? = null
@@ -76,7 +79,6 @@ class ExploracaoLivreManager(
         val anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDetectado)
         val idUnico = noDetectado.deviceName ?: noDetectado.macAddress.ifBlank { noDetectado.id }
 
-        // Mantém a calibração manual do ângulo se já tiver sido ajustado
         val anguloFinal = beaconsDetectados[idUnico]?.anguloAlvo ?: anguloAlvo
 
         beaconsDetectados[idUnico] = BeaconAlvo(
@@ -95,7 +97,6 @@ class ExploracaoLivreManager(
         val idUnico = entry.key
         val beacon = entry.value
 
-        // Ajusta as coordenadas virtuais para bater 1:1 com a direção que o celular está apontando
         val rad = Math.toRadians(azimuteAtual.toDouble())
         val novoNo = beacon.no.copy(
             x = Math.sin(rad) * 5.0,
@@ -112,9 +113,6 @@ class ExploracaoLivreManager(
      * Processa o azimute atual do dispositivo (0º a 360º).
      * Aplica o gradiente tátil "Quente ou Frio" e aciona pergunta TTS + foco de mira
      * quando a tolerância for <= 8º.
-     *
-     * @param azimuteAtual Azimute atual fornecido pelo OrientationManager.
-     * @param toleranceDegrees Tolerância de mira exata (padrão: 8º).
      */
     fun processarOrientacao(azimuteAtual: Float, toleranceDegrees: Float = 8f) {
         val agora = System.currentTimeMillis()
@@ -138,7 +136,6 @@ class ExploracaoLivreManager(
             val diferencaMinima = HapticManager.calculateAngularDifference(azimuteAtual, beaconMaisProximo.anguloAlvo)
             val estaNaMira = diferencaMinima <= toleranceDegrees
 
-            // Telemetria ao vivo para exibição clara na tela
             val identificador = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.nomeLocal
             onTelemetriaUpdated?.invoke(
                 TelemetriaMira(
@@ -151,7 +148,6 @@ class ExploracaoLivreManager(
                 )
             )
 
-            // Aplica o gradiente tátil Quente ou Frio
             hapticManager.processarHapticQuenteFrio(diferencaMinima, toleranceDegrees)
 
             if (estaNaMira) {
@@ -184,6 +180,7 @@ class ExploracaoLivreManager(
         val frase = "Deseja definir $nomePonto como seu destino?"
         Log.d("INNAV_EXPLORACAO", "TTS Pergunta: $frase")
         if (ttsPronto) {
+            tts?.stop()
             tts?.speak(frase, TextToSpeech.QUEUE_FLUSH, null, "EXPLORACAO_PERGUNTA_TTS_ID")
         }
     }
@@ -191,6 +188,7 @@ class ExploracaoLivreManager(
     fun falarMensagem(mensagem: String) {
         Log.d("INNAV_EXPLORACAO", "TTS Mensagem: $mensagem")
         if (ttsPronto) {
+            tts?.stop()
             tts?.speak(mensagem, TextToSpeech.QUEUE_FLUSH, null, "EXPLORACAO_MSG_TTS_ID")
         }
     }
