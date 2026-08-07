@@ -39,12 +39,39 @@ class ExploracaoLivreActivity : AppCompatActivity() {
 
     private val checkpointsConhecidos = listOf(
         No(
-            id = "ESP_LAB",
-            nomeLocal = "Laboratório de Hardware",
-            macAddress = "68:25:DD:48:1F:12",
-            deviceName = "Tab S6 Lite de Jhonata",
+            id = "ESP_01",
+            nomeLocal = "Portaria Principal",
+            deviceName = "INNAV_ESP_01",
             x = 0.0,
             y = 5.0
+        ),
+        No(
+            id = "ESP_02",
+            nomeLocal = "Corredor Central",
+            deviceName = "INNAV_ESP_02",
+            x = 5.0,
+            y = 5.0
+        ),
+        No(
+            id = "ESP_03",
+            nomeLocal = "Laboratório de Hardware",
+            deviceName = "INNAV_ESP_03",
+            x = 10.0,
+            y = 10.0
+        ),
+        No(
+            id = "ESP_04",
+            nomeLocal = "Hall de Entrada",
+            deviceName = "INNAV_ESP_04",
+            x = 0.0,
+            y = 10.0
+        ),
+        No(
+            id = "ESP_05",
+            nomeLocal = "Auditório / Biblioteca",
+            deviceName = "INNAV_ESP_05",
+            x = 15.0,
+            y = 10.0
         )
     )
 

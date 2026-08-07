@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var portaria: No
     private lateinit var corredor: No
     private lateinit var labHardware: No
+    private lateinit var hallEntrada: No
+    private lateinit var auditorio: No
 
     // Scanner BLE do Menu Principal
     private val scanCallback = object : ScanCallback() {
@@ -191,28 +193,43 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         portaria = No(
             id = "ESP_01",
             nomeLocal = "Portaria Principal",
-            macAddress = "68:25:DD:48:1F:12",
-            deviceName = "Tab S6 Lite de Jhonata",
+            deviceName = "INNAV_ESP_01",
             x = 0.0,
             y = 5.0
         )
         corredor = No(
             id = "ESP_02",
             nomeLocal = "Corredor Central",
+            deviceName = "INNAV_ESP_02",
             x = 5.0,
             y = 5.0
         )
         labHardware = No(
             id = "ESP_03",
             nomeLocal = "Laboratório de Hardware",
-            macAddress = "68:25:DD:48:1F:12",
-            deviceName = "Tab S6 Lite de Jhonata",
+            deviceName = "INNAV_ESP_03",
             x = 10.0,
+            y = 10.0
+        )
+        hallEntrada = No(
+            id = "ESP_04",
+            nomeLocal = "Hall de Entrada",
+            deviceName = "INNAV_ESP_04",
+            x = 0.0,
+            y = 10.0
+        )
+        auditorio = No(
+            id = "ESP_05",
+            nomeLocal = "Auditório / Biblioteca",
+            deviceName = "INNAV_ESP_05",
+            x = 15.0,
             y = 10.0
         )
 
         mapaInatel.adicionarAresta(origem = portaria, destino = corredor, distancia = 10.0, instrucao = "Siga 10 metros em frente pelo corredor principal.")
         mapaInatel.adicionarAresta(origem = corredor, destino = labHardware, distancia = 5.0, instrucao = "Vire à direita e ande 5 metros para chegar ao laboratório.")
+        mapaInatel.adicionarAresta(origem = portaria, destino = hallEntrada, distancia = 5.0, instrucao = "Siga à esquerda por 5 metros até o hall de entrada.")
+        mapaInatel.adicionarAresta(origem = labHardware, destino = auditorio, distancia = 7.0, instrucao = "Continue pelo corredor por 7 metros até o auditório.")
     }
 
     private fun pedirPermissoesBluetooth() {
