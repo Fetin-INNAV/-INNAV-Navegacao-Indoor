@@ -70,7 +70,7 @@ void setup() {
 
     oAdvertisementData.setFlags(0x04); // BR_EDR_NOT_SUPPORTED
     
-    std::string strServiceData = "";
+    String strServiceData = "";
     strServiceData += (char)16;     // Comprimento dos dados do fabricante
     strServiceData += (char)0xFF;   // Tipo de dado: Manufacturer Specific Data
     strServiceData += oBeacon.getData();
