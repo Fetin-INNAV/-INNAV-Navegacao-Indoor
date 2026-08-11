@@ -35,6 +35,8 @@ class NavegacaoActivity : AppCompatActivity() {
     private val noAtualUsuario = No(id = "ESP_PORTARIA", nomeLocal = "Portaria Principal", x = 0.0, y = 0.0)
     private lateinit var noDestinoLab: No
 
+    private val filtroKalman = com.fetin.innav.filtering.FiltroKalmanRssi()
+
     private val scanCallback = object : ScanCallback() {
         @SuppressLint("SetTextI18n", "DefaultLocale", "MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -42,16 +44,17 @@ class NavegacaoActivity : AppCompatActivity() {
 
             val macAddress = result.device.address
             val deviceName = runCatching { result.device.name }.getOrNull() ?: result.scanRecord?.deviceName
-            val rssi = result.rssi
+            val rssiBruto = result.rssi
 
             if (noDestinoLab.correspondeAoDispositivo(macAddress, deviceName) && !chegouNoDestino) {
-                val distanciaEstimada = CalculadoraAnguloNavegacao.estimarDistanciaMetros(rssi)
+                val rssiFiltrado = filtroKalman.filtrar(rssiBruto.toDouble())
+                val distanciaEstimada = CalculadoraAnguloNavegacao.estimarDistanciaMetros(rssiFiltrado)
                 anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDestinoLab)
 
                 val identificadorEncontrado = deviceName ?: macAddress
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
-                        txtSinal.text = "Sinal [$identificadorEncontrado]: $rssi dBm (~%.1fm) | Alvo: %.0f°".format(distanciaEstimada, anguloAlvo)
+                        txtSinal.text = "Sinal [$identificadorEncontrado]: $rssiBruto dBm (Kalman: %.1f dBm | ~%.1fm) | Alvo: %.0f°".format(rssiFiltrado, distanciaEstimada, anguloAlvo)
                     }
                 }
 
@@ -61,7 +64,8 @@ class NavegacaoActivity : AppCompatActivity() {
                     toleranceDegrees = 8f
                 )
 
-                if (rssi > -45) {
+                // Verificação de chegada utilizando o RSSI filtrado (evita disparos falsos por picos de ruído)
+                if (rssiFiltrado > -46.0) {
                     chegouNoDestino = true
                     finalizarNavegacaoComSucesso()
                 }

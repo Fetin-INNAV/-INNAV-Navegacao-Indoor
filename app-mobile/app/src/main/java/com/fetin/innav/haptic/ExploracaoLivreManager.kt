@@ -3,15 +3,18 @@ package com.fetin.innav.haptic
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import com.fetin.innav.filtering.BeaconPosicionamento
+import com.fetin.innav.filtering.GerenciadorFiltroKalman
+import com.fetin.innav.filtering.TrilateracaoWCL
 import com.fetin.innav.models.No
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Gerenciador do modo "Exploração Livre":
- * Varre continuamente os beacons/ESP32 detectados, escuta a orientação do dispositivo,
- * aplica a lógica tátil "Quente ou Frio" e anuncia por voz (TTS) o nó selecionado
- * com precisão de mira de ±8º.
+ * Varre continuamente os beacons/ESP32 detectados, aplica filtragem de sinal por Filtro de Kalman no RSSI,
+ * estima a posição 2D do usuário via Trilateração Ponderada (WCL), escuta a orientação do dispositivo,
+ * aplica a lógica tátil "Quente ou Frio" e anuncia por voz (TTS) o nó selecionado com precisão de mira de ±8º.
  *
  * Utiliza ConcurrentHashMap para garantir segurança concorrente entre as threads do BLE e dos Sensores.
  */
@@ -23,8 +26,15 @@ class ExploracaoLivreManager(
     private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
     private var ttsPronto = false
 
+    // Gerenciador de Filtros de Kalman para suavização do sinal RSSI de cada ESP32
+    private val gerenciadorKalman = GerenciadorFiltroKalman()
+
     // Registra os beacons detectados recentemente em um mapa thread-safe
     private val beaconsDetectados = ConcurrentHashMap<String, BeaconAlvo>()
+
+    // Posição 2D (X, Y) estimada do usuário via Trilateração Ponderada (WCL)
+    var posicaoUsuarioEstimada: Pair<Double, Double>? = null
+        private set
 
     // Trava de Debounce: ID do último beacon anunciado para evitar repetições contínuas
     private var ultimoBeaconFocadoId: String? = null
@@ -36,7 +46,8 @@ class ExploracaoLivreManager(
 
     data class BeaconAlvo(
         val no: No,
-        val rssi: Int,
+        val rssiBruto: Int,
+        val rssiFiltrado: Double,
         val distanciaEstimada: Double,
         val anguloAlvo: Float,
         val timestampMs: Long = System.currentTimeMillis()
@@ -48,7 +59,9 @@ class ExploracaoLivreManager(
         val diferencaErro: Float,
         val estaNaMira: Boolean,
         val idBeacon: String,
-        val rssi: Int
+        val rssiBruto: Int,
+        val rssiFiltrado: Double,
+        val posicaoUsuario: Pair<Double, Double>? = null
     )
 
     var onTelemetriaUpdated: ((TelemetriaMira?) -> Unit)? = null
@@ -69,23 +82,51 @@ class ExploracaoLivreManager(
 
     /**
      * Atualiza ou adiciona um beacon detectado na varredura BLE.
+     * Aplica o Filtro de Kalman no RSSI e recalcula a posição 2D do usuário por Trilateração Ponderada (WCL).
      */
     fun registrarBeaconDetectado(
         noAtualUsuario: No,
         noDetectado: No,
-        rssi: Int
+        rssiBruto: Int
     ) {
-        val distancia = CalculadoraAnguloNavegacao.estimarDistanciaMetros(rssi)
-        val anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDetectado)
         val idUnico = noDetectado.deviceName ?: noDetectado.macAddress.ifBlank { noDetectado.id }
 
-        val anguloFinal = beaconsDetectados[idUnico]?.anguloAlvo ?: anguloAlvo
+        // 1. Filtragem do RSSI recebido via Filtro de Kalman
+        val rssiFiltrado = gerenciadorKalman.filtrarRssi(idUnico, rssiBruto)
+
+        // 2. Estimativa de distância em metros utilizando o modelo Log-Distance Path Loss
+        val distancia = CalculadoraAnguloNavegacao.estimarDistanciaMetros(rssiFiltrado)
+
+        // 3. Atualização temporária dos beacons ativos para cálculo da Trilateração Ponderada (WCL)
+        val agora = System.currentTimeMillis()
+        val beaconsAtivos = beaconsDetectados.values
+            .filter { agora - it.timestampMs <= 8000 }
+            .map { BeaconPosicionamento(it.no, it.rssiFiltrado, it.distanciaEstimada) }
+            .toMutableList()
+
+        // Adiciona/atualiza o beacon corrente no cálculo WCL
+        beaconsAtivos.removeAll { (it.no.deviceName ?: it.no.macAddress.ifBlank { it.no.id }) == idUnico }
+        beaconsAtivos.add(BeaconPosicionamento(noDetectado, rssiFiltrado, distancia))
+
+        // 4. Recalcula a posição (X, Y) do usuário utilizando WCL com os 3 ESP32s mais próximos
+        val novaPosicaoWcl = TrilateracaoWCL.calcularPosicaoUsuario(beaconsAtivos)
+        if (novaPosicaoWcl != null) {
+            posicaoUsuarioEstimada = TrilateracaoWCL.suavizarCoordenadas(novaPosicaoWcl, posicaoUsuarioEstimada)
+        }
+
+        // 5. Calcula o azimute alvo baseado na posição WCL estimada (ou no nó do usuário como fallback)
+        val posBaseX = posicaoUsuarioEstimada?.first ?: noAtualUsuario.x
+        val posBaseY = posicaoUsuarioEstimada?.second ?: noAtualUsuario.y
+
+        val anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(posBaseX, posBaseY, noDetectado.x, noDetectado.y)
 
         beaconsDetectados[idUnico] = BeaconAlvo(
             no = noDetectado,
-            rssi = rssi,
+            rssiBruto = rssiBruto,
+            rssiFiltrado = rssiFiltrado,
             distanciaEstimada = distancia,
-            anguloAlvo = anguloFinal
+            anguloAlvo = anguloAlvo,
+            timestampMs = agora
         )
     }
 
@@ -144,7 +185,9 @@ class ExploracaoLivreManager(
                     diferencaErro = diferencaMinima,
                     estaNaMira = estaNaMira,
                     idBeacon = identificador,
-                    rssi = beaconMaisProximo.rssi
+                    rssiBruto = beaconMaisProximo.rssiBruto,
+                    rssiFiltrado = beaconMaisProximo.rssiFiltrado,
+                    posicaoUsuario = posicaoUsuarioEstimada
                 )
             )
 
@@ -198,6 +241,8 @@ class ExploracaoLivreManager(
         tts?.shutdown()
         ttsPronto = false
         beaconsDetectados.clear()
+        gerenciadorKalman.limpar()
+        posicaoUsuarioEstimada = null
         ultimoBeaconFocadoId = null
     }
 }

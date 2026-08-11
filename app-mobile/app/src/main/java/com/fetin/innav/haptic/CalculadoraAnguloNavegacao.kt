@@ -14,17 +14,21 @@ object CalculadoraAnguloNavegacao {
     /**
      * Estima a distância em metros até o ESP32 / Beacon utilizando o modelo de atenuação de sinal (Log-Distance Path Loss Model).
      *
-     * @param rssi Intensidade do sinal recebido em dBm.
+     * @param rssi Intensidade do sinal recebido em dBm (bruto ou filtrado pelo Kalman).
      * @param txPower RSSI de referência medido a 1 metro (default -59 dBm).
      * @param pathLossExponent Coeficiente de atenuação do ambiente indoor (default 2.0).
      * @return Distância estimada em metros (-1.0 em caso de valores inválidos).
      */
-    fun estimarDistanciaMetros(rssi: Int, txPower: Int = -59, pathLossExponent: Double = 2.0): Double {
-        if (rssi == 0 || rssi.toDouble().isNaN()) return -1.0
+    fun estimarDistanciaMetros(rssi: Double, txPower: Int = -59, pathLossExponent: Double = 2.0): Double {
+        if (rssi == 0.0 || rssi.isNaN()) return -1.0
         val exponenteSeguro = if (pathLossExponent <= 0.0 || pathLossExponent.isNaN()) 2.0 else pathLossExponent
         val ratio = (txPower - rssi) / (10.0 * exponenteSeguro)
         val resultado = Math.pow(10.0, ratio)
         return if (resultado.isNaN() || resultado.isInfinite()) -1.0 else resultado
+    }
+
+    fun estimarDistanciaMetros(rssi: Int, txPower: Int = -59, pathLossExponent: Double = 2.0): Double {
+        return estimarDistanciaMetros(rssi.toDouble(), txPower, pathLossExponent)
     }
 
     /**

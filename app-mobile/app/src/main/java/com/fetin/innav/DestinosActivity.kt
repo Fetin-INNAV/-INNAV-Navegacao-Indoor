@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.fetin.innav.models.No
 import java.util.Locale
 
 class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
@@ -24,6 +25,47 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var tts: TextToSpeech
     private var speechRecognizer: SpeechRecognizer? = null
     private val handler = Handler(Looper.getMainLooper())
+
+    // 5 Destinos físicos representados pelos 5 ESPs
+    private val espPortaria = No(
+        id = "ESP_01",
+        nomeLocal = "Portaria",
+        deviceName = "INNAV_ESP_01",
+        x = 0.0,
+        y = 5.0
+    )
+
+    private val espCorredor = No(
+        id = "ESP_02",
+        nomeLocal = "Corredor",
+        deviceName = "INNAV_ESP_02",
+        x = 5.0,
+        y = 5.0
+    )
+
+    private val espLabHardware = No(
+        id = "ESP_03",
+        nomeLocal = "Laboratório de Hardware",
+        deviceName = "INNAV_ESP_03",
+        x = 10.0,
+        y = 10.0
+    )
+
+    private val espLabCircuitos = No(
+        id = "ESP_04",
+        nomeLocal = "Lab de Circuitos",
+        deviceName = "INNAV_ESP_04",
+        x = 0.0,
+        y = 10.0
+    )
+
+    private val espCDG = No(
+        id = "ESP_05",
+        nomeLocal = "CDG",
+        deviceName = "INNAV_ESP_05",
+        x = 15.0,
+        y = 10.0
+    )
 
     private val requestAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -43,16 +85,40 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         configurarReconhecimentoDeVoz()
 
-        val btnDestinoLab = findViewById<Button>(R.id.btnDestinoLab)
-        configurarBotaoComDuploToque(
-            button = btnDestinoLab,
-            nomeBotao = "Laboratório de Hardware",
-            falaConfirmacao = "Rota para o laboratório selecionada. Iniciando navegação.",
-            acaoDuploClique = {
-                val intent = Intent(this, NavegacaoActivity::class.java)
-                startActivity(intent)
-                finish()
-            }
+        val btnPortaria = findViewById<Button>(R.id.btnDestinoPortaria)
+        val btnCorredor = findViewById<Button>(R.id.btnDestinoCorredor)
+        val btnHardware = findViewById<Button>(R.id.btnDestinoHardware)
+        val btnCircuitos = findViewById<Button>(R.id.btnDestinoCircuitos)
+        val btnCDG = findViewById<Button>(R.id.btnDestinoCDG)
+
+        configurarBotaoDestino(
+            button = btnPortaria,
+            noDestino = espPortaria,
+            falaNome = "Portaria"
+        )
+
+        configurarBotaoDestino(
+            button = btnCorredor,
+            noDestino = espCorredor,
+            falaNome = "Corredor"
+        )
+
+        configurarBotaoDestino(
+            button = btnHardware,
+            noDestino = espLabHardware,
+            falaNome = "Laboratório de Hardware"
+        )
+
+        configurarBotaoDestino(
+            button = btnCircuitos,
+            noDestino = espLabCircuitos,
+            falaNome = "Lab de Circuitos"
+        )
+
+        configurarBotaoDestino(
+            button = btnCDG,
+            noDestino = espCDG,
+            falaNome = "CDG"
         )
 
         val telaInteira = findViewById<View>(android.R.id.content)
@@ -61,11 +127,15 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    private fun configurarBotaoComDuploToque(
+    /**
+     * Configura o comportamento de gestos para cada destino (lógica idêntica ao menu inicial):
+     * - 1 toque (ou foco): a voz TTS fala o nome do destino.
+     * - 2 toques rápidos (duplo toque): fala a confirmação e inicia a navegação para o destino.
+     */
+    private fun configurarBotaoDestino(
         button: Button,
-        nomeBotao: String,
-        falaConfirmacao: String,
-        acaoDuploClique: () -> Unit
+        noDestino: No,
+        falaNome: String
     ) {
         var ultimoClique = 0L
         val intervaloDuploClique = 500L
@@ -73,25 +143,42 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         button.setOnClickListener {
             val agora = System.currentTimeMillis()
             if (agora - ultimoClique <= intervaloDuploClique) {
+                // DUPLO TOQUE (2 toques): Confirmação de seleção e início da navegação
                 ultimoClique = 0L
+                val falaConfirmacao = "Iniciando navegação para $falaNome"
                 falar(falaConfirmacao)
-                handler.postDelayed({
+
+                button.postDelayed({
                     if (!isFinishing && !isDestroyed) {
-                        pararRecursos()
-                        acaoDuploClique()
+                        iniciarNavegacaoPara(noDestino)
                     }
-                }, 1500)
+                }, 350)
             } else {
+                // UM TOQUE (1 toque): Anuncia o nome do destino
                 ultimoClique = agora
-                falar(nomeBotao)
+                falar(falaNome)
             }
         }
 
         button.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                falar(nomeBotao)
+                falar(falaNome)
             }
         }
+    }
+
+    private fun iniciarNavegacaoPara(noDestino: No) {
+        pararRecursos()
+        val intent = Intent(this, NavegacaoActivity::class.java).apply {
+            putExtra("DESTINO_ID", noDestino.id)
+            putExtra("DESTINO_NOME", noDestino.nomeLocal)
+            putExtra("DESTINO_MAC", noDestino.macAddress)
+            putExtra("DESTINO_NAME", noDestino.deviceName)
+            putExtra("DESTINO_X", noDestino.x)
+            putExtra("DESTINO_Y", noDestino.y)
+        }
+        startActivity(intent)
+        finish()
     }
 
     private fun configurarReconhecimentoDeVoz() {
@@ -121,17 +208,22 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val textoFalado = matches[0].lowercase(Locale.getDefault())
                     Log.d("INNAV_VOZ", "Usuário disse: $textoFalado")
 
-                    if (textoFalado.contains("laboratório") || textoFalado.contains("laboratorio")) {
-                        falar("Rota para o laboratório selecionada por voz. Iniciando navegação.")
+                    val destinoEncontrado = when {
+                        textoFalado.contains("portaria") -> espPortaria
+                        textoFalado.contains("corredor") -> espCorredor
+                        textoFalado.contains("hardware") || textoFalado.contains("laboratório de hardware") || textoFalado.contains("laboratorio de hardware") -> espLabHardware
+                        textoFalado.contains("circuito") || textoFalado.contains("circuitos") || textoFalado.contains("lab de circuitos") -> espLabCircuitos
+                        textoFalado.contains("cdg") || textoFalado.contains("c d g") -> espCDG
+                        else -> null
+                    }
 
+                    if (destinoEncontrado != null) {
+                        falar("Rota para ${destinoEncontrado.nomeLocal} selecionada por voz. Iniciando navegação.")
                         handler.postDelayed({
                             if (!isFinishing && !isDestroyed) {
-                                pararRecursos()
-                                val intent = Intent(this@DestinosActivity, NavegacaoActivity::class.java)
-                                startActivity(intent)
-                                finish()
+                                iniciarNavegacaoPara(destinoEncontrado)
                             }
-                        }, 2000)
+                        }, 1500)
                     } else {
                         falar("Destino não encontrado. Você disse: $textoFalado. Tente novamente.")
                     }
@@ -157,7 +249,7 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         handler.postDelayed({
             if (isFinishing || isDestroyed) return@postDelayed
             if (::tts.isInitialized) {
-                tts.stop() // Interrompe o TTS para o microfone não ouvir a própria voz do alto-falante
+                tts.stop()
             }
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)

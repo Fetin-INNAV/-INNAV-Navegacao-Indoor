@@ -1,35 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#000000"
-    android:padding="16dp"
-    android:gravity="center">
+    android:fillViewport="true">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="SELECIONE O DESTINO"
-        android:textColor="#FFFFFF"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginBottom="32dp"
-        android:contentDescription="Tela de seleção de destino. Opções abaixo." />
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center_horizontal">
 
-    <Button
-        android:id="@+id/btnDestinoLab"
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        app:cornerRadius="24dp"
-        android:backgroundTint="#FFEB3B"
-        android:text="LABORATÓRIO DE\nHARDWARE"
-        android:textColor="#000000"
-        android:textSize="36sp"
-        android:textStyle="bold"
-        android:hapticFeedbackEnabled="true"
-        android:contentDescription="Laboratório de Hardware. Toque duas vezes para iniciar a rota." />
+        <TextView
+            android:id="@+id/txtTituloDestinos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ESCOLHER DESTINO"
+            android:textColor="#FFFFFF"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"
+            android:contentDescription="Tela de seleção de destino. Opções abaixo." />
 
-</LinearLayout>
+        <TextView
+            android:id="@+id/txtSubtituloDestinos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1 toque para ouvir • 2 toques para navegar"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnDestinoPortaria"
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:layout_marginBottom="12dp"
+            app:cornerRadius="20dp"
+            android:backgroundTint="#FFEB3B"
+            android:text="1. PORTARIA"
+            android:textColor="#000000"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:hapticFeedbackEnabled="true"
+            android:contentDescription="Portaria. ESP 1. Toque duas vezes para iniciar navegação." />
+
+        <Button
+            android:id="@+id/btnDestinoCorredor"
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:layout_marginBottom="12dp"
+            app:cornerRadius="20dp"
+            android:backgroundTint="#FFEB3B"
+            android:text="2. CORREDOR"
+            android:textColor="#000000"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:hapticFeedbackEnabled="true"
+            android:contentDescription="Corredor. ESP 2. Toque duas vezes para iniciar navegação." />
+
+        <Button
+            android:id="@+id/btnDestinoHardware"
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:layout_marginBottom="12dp"
+            app:cornerRadius="20dp"
+            android:backgroundTint="#FFEB3B"
+            android:text="3. LAB DE HARDWARE"
+            android:textColor="#000000"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:hapticFeedbackEnabled="true"
+            android:contentDescription="Laboratório de Hardware. ESP 3. Toque duas vezes para iniciar navegação." />
+
+        <Button
+            android:id="@+id/btnDestinoCircuitos"
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:layout_marginBottom="12dp"
+            app:cornerRadius="20dp"
+            android:backgroundTint="#FFEB3B"
+            android:text="4. LAB DE CIRCUITOS"
+            android:textColor="#000000"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:hapticFeedbackEnabled="true"
+            android:contentDescription="Laboratório de Circuitos. ESP 4. Toque duas vezes para iniciar navegação." />
+
+        <Button
+            android:id="@+id/btnDestinoCDG"
+            android:layout_width="match_parent"
+            android:layout_height="90dp"
+            android:layout_marginBottom="12dp"
+            app:cornerRadius="20dp"
+            android:backgroundTint="#FFEB3B"
+            android:text="5. CDG"
+            android:textColor="#000000"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:hapticFeedbackEnabled="true"
+            android:contentDescription="CDG. ESP 5. Toque duas vezes para iniciar navegação." />
+
+    </LinearLayout>
+</ScrollView>

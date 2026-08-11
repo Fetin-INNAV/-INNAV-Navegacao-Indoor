@@ -61,14 +61,14 @@ class ExploracaoLivreActivity : AppCompatActivity() {
         ),
         No(
             id = "ESP_04",
-            nomeLocal = "Hall de Entrada",
+            nomeLocal = "Lab de Circuitos",
             deviceName = "INNAV_ESP_04",
             x = 0.0,
             y = 10.0
         ),
         No(
             id = "ESP_05",
-            nomeLocal = "Auditório / Biblioteca",
+            nomeLocal = "CDG",
             deviceName = "INNAV_ESP_05",
             x = 15.0,
             y = 10.0
@@ -91,7 +91,7 @@ class ExploracaoLivreActivity : AppCompatActivity() {
             exploracaoLivreManager.registrarBeaconDetectado(
                 noAtualUsuario = usuarioPosicao,
                 noDetectado = noEncontrado,
-                rssi = rssi
+                rssiBruto = rssi
             )
         }
     }
@@ -117,13 +117,17 @@ class ExploracaoLivreActivity : AppCompatActivity() {
                     if (telemetria != null) {
                         val statusInversao = if (orientationManager.inverterAzimute) " [180° Inv]" else ""
                         val statusMira = if (telemetria.estaNaMira) "🎯 NA MIRA (<= 8°)" else if (telemetria.diferencaErro <= 20f) "🔥 QUENTE" else if (telemetria.diferencaErro <= 45f) "🌤️ MORNO" else "❄️ FRIO (> 45°)"
+                        val textPosicao = telemetria.posicaoUsuario?.let { " | Pos (WCL): (%.1fm, %.1fm)".format(it.first, it.second) } ?: ""
 
-                        txtStatus.text = "Sinal [${telemetria.idBeacon}]: ${telemetria.rssi} dBm$statusInversao\n" +
-                                "Bússola: %.0f° | Alvo: %.0f° | Erro: %.0f°\n$statusMira".format(
-                                    telemetria.azimuteCelular,
-                                    telemetria.anguloAlvo,
-                                    telemetria.diferencaErro
-                                )
+                        txtStatus.text = "Sinal [${telemetria.idBeacon}]: ${telemetria.rssiBruto} dBm (Kalman: %.1f dBm)%s%s\n".format(
+                            telemetria.rssiFiltrado,
+                            statusInversao,
+                            textPosicao
+                        ) + "Bússola: %.0f° | Alvo: %.0f° | Erro: %.0f°\n$statusMira".format(
+                            telemetria.azimuteCelular,
+                            telemetria.anguloAlvo,
+                            telemetria.diferencaErro
+                        )
                     } else {
                         txtStatus.text = "Procurando sinal BLE do ESP32..."
                     }
