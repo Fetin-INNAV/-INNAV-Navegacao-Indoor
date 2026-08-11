@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -20,9 +22,9 @@ import java.util.Locale
 class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var tts: TextToSpeech
-    private lateinit var speechRecognizer: SpeechRecognizer
+    private var speechRecognizer: SpeechRecognizer? = null
+    private val handler = Handler(Looper.getMainLooper())
 
-    // Pedido de permissão do microfone em tempo real
     private val requestAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -41,29 +43,65 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         configurarReconhecimentoDeVoz()
 
-        // 1. RESTAURADO: Seu botão original do Laboratório funcionando perfeitamente
         val btnDestinoLab = findViewById<Button>(R.id.btnDestinoLab)
-        btnDestinoLab.setOnClickListener {
-            Toast.makeText(this, "Rota para o Laboratório selecionada!", Toast.LENGTH_LONG).show()
-            falar("Rota para o laboratório selecionada. Iniciando navegação.")
-
-            window.decorView.postDelayed({
+        configurarBotaoComDuploToque(
+            button = btnDestinoLab,
+            nomeBotao = "Laboratório de Hardware",
+            falaConfirmacao = "Rota para o laboratório selecionada. Iniciando navegação.",
+            acaoDuploClique = {
                 val intent = Intent(this, NavegacaoActivity::class.java)
                 startActivity(intent)
                 finish()
-            }, 3500)
-        }
+            }
+        )
 
-        // 2. NOVO: Tocar em qualquer lugar vazio da tela ativa o microfone
         val telaInteira = findViewById<View>(android.R.id.content)
         telaInteira.setOnClickListener {
             verificarPermissaoEOuvir()
         }
     }
 
+    private fun configurarBotaoComDuploToque(
+        button: Button,
+        nomeBotao: String,
+        falaConfirmacao: String,
+        acaoDuploClique: () -> Unit
+    ) {
+        var ultimoClique = 0L
+        val intervaloDuploClique = 500L
+
+        button.setOnClickListener {
+            val agora = System.currentTimeMillis()
+            if (agora - ultimoClique <= intervaloDuploClique) {
+                ultimoClique = 0L
+                falar(falaConfirmacao)
+                handler.postDelayed({
+                    if (!isFinishing && !isDestroyed) {
+                        pararRecursos()
+                        acaoDuploClique()
+                    }
+                }, 1500)
+            } else {
+                ultimoClique = agora
+                falar(nomeBotao)
+            }
+        }
+
+        button.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                falar(nomeBotao)
+            }
+        }
+    }
+
     private fun configurarReconhecimentoDeVoz() {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            Log.w("INNAV_VOZ", "Serviço de reconhecimento de voz indisponível neste dispositivo.")
+            return
+        }
+
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-        speechRecognizer.setRecognitionListener(object : RecognitionListener {
+        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {
                 Toast.makeText(this@DestinosActivity, "Ouvindo...", Toast.LENGTH_SHORT).show()
             }
@@ -86,11 +124,14 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     if (textoFalado.contains("laboratório") || textoFalado.contains("laboratorio")) {
                         falar("Rota para o laboratório selecionada por voz. Iniciando navegação.")
 
-                        window.decorView.postDelayed({
-                            val intent = Intent(this@DestinosActivity, NavegacaoActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        }, 4000)
+                        handler.postDelayed({
+                            if (!isFinishing && !isDestroyed) {
+                                pararRecursos()
+                                val intent = Intent(this@DestinosActivity, NavegacaoActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            }
+                        }, 2000)
                     } else {
                         falar("Destino não encontrado. Você disse: $textoFalado. Tente novamente.")
                     }
@@ -113,36 +154,53 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun iniciarEscuta() {
         falar("Diga o nome do local para onde deseja ir.")
 
-        window.decorView.postDelayed({
+        handler.postDelayed({
+            if (isFinishing || isDestroyed) return@postDelayed
+            if (::tts.isInitialized) {
+                tts.stop() // Interrompe o TTS para o microfone não ouvir a própria voz do alto-falante
+            }
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
             }
-            speechRecognizer.startListening(intent)
-        }, 2500)
+            speechRecognizer?.startListening(intent)
+        }, 2000)
     }
 
     private fun falar(texto: String) {
         if (::tts.isInitialized) {
-            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "")
+            tts.stop()
+            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "DESTINOS_TTS_ID")
         }
     }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             tts.setLanguage(Locale("pt", "BR"))
-            falar("Toque para escolher seu destino, ou toque na parte de baixow' da tela para falar o seu destino.")
+            falar("Selecione o seu destino na lista ou toque na tela para falar.")
         }
     }
 
-    override fun onDestroy() {
+    private fun pararRecursos() {
+        handler.removeCallbacksAndMessages(null)
         if (::tts.isInitialized) {
             tts.stop()
+        }
+        speechRecognizer?.cancel()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        pararRecursos()
+    }
+
+    override fun onDestroy() {
+        pararRecursos()
+        if (::tts.isInitialized) {
             tts.shutdown()
         }
-        if (::speechRecognizer.isInitialized) {
-            speechRecognizer.destroy()
-        }
+        speechRecognizer?.destroy()
+        speechRecognizer = null
         super.onDestroy()
     }
 }

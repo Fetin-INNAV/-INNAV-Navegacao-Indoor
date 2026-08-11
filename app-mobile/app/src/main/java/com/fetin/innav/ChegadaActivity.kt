@@ -16,23 +16,63 @@ class ChegadaActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chegada)
 
-        // Liga o motor de voz (isso aciona o onInit automaticamente)
         tts = TextToSpeech(this, this)
 
         val btnNovoDestino = findViewById<Button>(R.id.btnNovoDestino)
         val btnMenuPrincipal = findViewById<Button>(R.id.btnMenuPrincipal)
 
-        btnNovoDestino.setOnClickListener {
-            val intent = Intent(this, DestinosActivity::class.java)
-            startActivity(intent)
-            finish()
+        configurarBotaoComDuploToque(
+            button = btnNovoDestino,
+            nomeBotao = "Escolher Novo Destino",
+            falaConfirmacao = "Iniciando Escolha de Novo Destino",
+            acaoDuploClique = {
+                val intent = Intent(this, DestinosActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
+        )
+
+        configurarBotaoComDuploToque(
+            button = btnMenuPrincipal,
+            nomeBotao = "Voltar ao Menu Principal",
+            falaConfirmacao = "Voltando ao Menu Principal",
+            acaoDuploClique = {
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
+                finish()
+            }
+        )
+    }
+
+    private fun configurarBotaoComDuploToque(
+        button: Button,
+        nomeBotao: String,
+        falaConfirmacao: String,
+        acaoDuploClique: () -> Unit
+    ) {
+        var ultimoClique = 0L
+        val intervaloDuploClique = 500L
+
+        button.setOnClickListener {
+            val agora = System.currentTimeMillis()
+            if (agora - ultimoClique <= intervaloDuploClique) {
+                ultimoClique = 0L
+                falar(falaConfirmacao)
+                button.postDelayed({
+                    if (::tts.isInitialized) tts.stop()
+                    acaoDuploClique()
+                }, 350)
+            } else {
+                ultimoClique = agora
+                falar(nomeBotao)
+            }
         }
 
-        btnMenuPrincipal.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-            startActivity(intent)
-            finish()
+        button.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                falar(nomeBotao)
+            }
         }
     }
 
@@ -41,13 +81,9 @@ class ChegadaActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val resultado = tts.setLanguage(Locale("pt", "BR"))
 
             if (resultado == TextToSpeech.LANG_MISSING_DATA || resultado == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("INNAV_TTS", "Idioma não suportado.")
+                Log.e("INNAV_TTS", "Idioma PT-BR não suportado.")
             } else {
-                // A instrução espacial detalhada, sem cortes!
-                val mensagemDeChegada = "Você chegou ao destino. A navegação foi encerrada. " +
-                        "A tela possui dois botões. " +
-                        "No meio da tela, aperte para Escolher Novo Destino. " +
-                        "Na parte inferior da tela, aperte para Voltar ao Menu Principal."
+                val mensagemDeChegada = "Você chegou ao destino. Navegação encerrada."
                 falar(mensagemDeChegada)
             }
         }
@@ -55,7 +91,15 @@ class ChegadaActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun falar(texto: String) {
         if (::tts.isInitialized) {
-            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "")
+            tts.stop()
+            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "CHEGADA_TTS_ID")
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::tts.isInitialized) {
+            tts.stop()
         }
     }
 

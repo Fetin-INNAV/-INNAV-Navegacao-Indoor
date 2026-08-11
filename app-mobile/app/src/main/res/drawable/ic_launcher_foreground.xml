@@ -1,30 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+
+    <!-- 1. Seta Brilhante de Navegação Indoor no Chão (Caminho Ciano / Azul) -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M24,84 L46,72 L46,78 L78,78 L78,86 L46,86 L46,92 Z" />
+
+    <path
+        android:fillColor="#80D8FF"
+        android:pathData="M28,84 L46,75 L46,79 L72,79 L72,83 L46,83 L46,87 Z" />
+
     <path
         android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M34,84 L46,78 L46,80 L66,80 L66,82 L46,82 L46,84 Z" />
+
+    <!-- 2. Cão Guia Robô (INNAV Robot Guide Dog) -->
+    
+    <!-- Cauda do Robô -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M38,50 Q30,42 34,36 Q38,36 41,45 Z" />
+
+    <!-- Perna Traseira Esquerda -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M40,58 L36,74 L42,74 L45,58 Z" />
+
+    <!-- Perna Dianteira Esquerda -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M60,58 L57,74 L63,74 L65,58 Z" />
+
+    <!-- Perna Traseira Direita (Frente) -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M44,56 L41,74 L48,74 L50,56 Z" />
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M43,64 A3,3 0 1,0 49,64 A3,3 0 1,0 43,64" />
+
+    <!-- Perna Dianteira Direita (Frente) -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M65,56 L63,74 L70,74 L71,56 Z" />
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M65,64 A3,3 0 1,0 71,64 A3,3 0 1,0 65,64" />
+
+    <!-- Corpo / Tronco Metálico -->
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M38,48 C38,42 46,42 54,44 C62,46 68,48 68,56 C68,62 60,64 50,64 C42,64 38,56 38,48 Z" />
+
+    <!-- Detalhe do Peitoral Ciano -->
+    <path
+        android:fillColor="#00B0FF"
+        android:pathData="M52,50 A4,4 0 1,0 60,50 A4,4 0 1,0 52,50" />
+
+    <!-- Coleira com Badge Laranja Brilhante -->
+    <path
+        android:fillColor="#455A64"
+        android:pathData="M63,44 L67,52 L71,50 L67,42 Z" />
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M65,49 A2.5,2.5 0 1,0 70,49 A2.5,2.5 0 1,0 65,49" />
+
+    <!-- Cabeça de Capacete Metálico -->
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M58,34 C58,24 68,22 78,24 C86,26 88,34 86,42 C84,48 74,50 66,48 C58,46 58,40 58,34 Z" />
+
+    <!-- Orelha Robótica Caída Esquerda -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M57,32 C52,32 50,42 54,48 C56,48 58,42 59,36 Z" />
+
+    <!-- Orelha Robótica Caída Direita -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M72,25 C68,18 64,28 66,36 C68,36 71,32 72,25 Z" />
+
+    <!-- Visor Laranja/Âmbar Brilhante (Display de Rosto) -->
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M66,30 C66,26 73,25 80,27 C84,28 85,34 83,38 C80,41 73,42 68,40 C66,38 66,34 66,30 Z" />
+
+    <path
+        android:fillColor="#FFB74D"
+        android:pathData="M68,31 C68,28 73,27 78,28 C81,29 82,33 81,36 C78,38 73,39 70,38 C68,36 68,33 68,31 Z" />
+
+    <!-- Olho Expressivo Amigável (Preto/Navy) -->
+    <path
+        android:fillColor="#0D1B2A"
+        android:pathData="M70,33 A2.5,3 0 1,0 75,33 A2.5,3 0 1,0 70,33" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M71,32 A0.8,0.8 0 1,0 72.6,32 A0.8,0.8 0 1,0 71,32" />
+
+    <!-- Focinho e Nariz Robótico -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M80,38 C84,38 87,40 85,44 C83,46 79,46 77,44 Z" />
+    <path
+        android:fillColor="#1A237E"
+        android:pathData="M82,39 A1.8,1.5 0 1,0 85.6,39 A1.8,1.5 0 1,0 82,39" />
 </vector>

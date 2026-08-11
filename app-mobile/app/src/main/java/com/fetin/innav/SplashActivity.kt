@@ -8,10 +8,12 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import java.util.Locale
-//import
+
 class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var tts: TextToSpeech
+    private val handler = Handler(Looper.getMainLooper())
+    private val splashRunnable = Runnable { irParaMain() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,10 +22,8 @@ class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Inicializa o motor de voz
         tts = TextToSpeech(this, this)
 
-        // Cria o temporizador: Espera 4000 milissegundos (4 segundos) e roda a função irParaMain()
-        Handler(Looper.getMainLooper()).postDelayed({
-            irParaMain()
-        }, 4300)
+        // Temporizador gerenciado para transição para a MainActivity
+        handler.postDelayed(splashRunnable, 4300)
     }
 
     override fun onInit(status: Int) {
@@ -31,30 +31,37 @@ class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val resultado = tts.setLanguage(Locale("pt", "BR"))
 
             if (resultado == TextToSpeech.LANG_MISSING_DATA || resultado == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("INNAV_TTS", "Idioma não suportado.")
+                Log.e("INNAV_TTS", "Idioma PT-BR não suportado no dispositivo.")
             } else {
-                // A voz de Onboarding da sua documentação!
-                falar("Bem-vindo ao innav. O seu assistente de navegação indoor.")
+                falar("Bem-vindo ao INNAV. O seu assistente de navegação indoor.")
             }
         }
     }
-// nada haver irmao .
+
     private fun falar(texto: String) {
         if (::tts.isInitialized) {
-            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "")
+            tts.stop()
+            tts.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "SPLASH_TTS_ID")
         }
     }
 
     private fun irParaMain() {
+        if (isFinishing || isDestroyed) return
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-
-        // Finaliza a Splash Screen para o usuário não conseguir voltar para ela apertando "Voltar"
         finish()
     }
 
+    override fun onPause() {
+        super.onPause()
+        if (::tts.isInitialized) {
+            tts.stop()
+        }
+    }
+
     override fun onDestroy() {
-        // Desliga a voz se fechar o app no meio do caminho
+        // Cancela o Handler para evitar vazamento de memória e exceção de Activity destruída
+        handler.removeCallbacks(splashRunnable)
         if (::tts.isInitialized) {
             tts.stop()
             tts.shutdown()

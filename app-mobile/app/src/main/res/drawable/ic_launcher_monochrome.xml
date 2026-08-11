@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Vetor monocromático limpo para Ícones Temáticos (Android 13+ / Samsung One UI) -->
+
+    <!-- Seta de Navegação -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M24,84 L46,72 L46,78 L78,78 L78,86 L46,86 L46,92 Z" />
+
+    <!-- Cão Guia Robô -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M38,50 Q30,42 34,36 Q38,36 41,45 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M40,58 L36,74 L42,74 L45,58 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M60,58 L57,74 L63,74 L65,58 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M44,56 L41,74 L48,74 L50,56 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M65,56 L63,74 L70,74 L71,56 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M38,48 C38,42 46,42 54,44 C62,46 68,48 68,56 C68,62 60,64 50,64 C42,64 38,56 38,48 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M58,34 C58,24 68,22 78,24 C86,26 88,34 86,42 C84,48 74,50 66,48 C58,46 58,40 58,34 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M57,32 C52,32 50,42 54,48 C56,48 58,42 59,36 Z" />
+
+    <path
+        android:fillColor="#000000"
+        android:pathData="M72,25 C68,18 64,28 66,36 C68,36 71,32 72,25 Z" />
+</vector>

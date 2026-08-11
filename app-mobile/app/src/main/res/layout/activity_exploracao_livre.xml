@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#000000"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🔍 EXPLORAÇÃO LIVRE"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/txtStatusExploracao"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Aponte o celular ao seu redor..."
+        android:textColor="#00FF00"
+        android:textSize="18sp"
+        android:gravity="center"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Botão de Ação: Definir como Destino (Aparece quando na mira <= 8º) -->
+    <Button
+        android:id="@+id/btnDefinirDestino"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        app:cornerRadius="20dp"
+        android:backgroundTint="#00E676"
+        android:text="📍 DEFINIR COMO DESTINO"
+        android:textColor="#000000"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:layout_marginBottom="12dp"
+        android:hapticFeedbackEnabled="true"
+        android:contentDescription="Botão para travar o destino selecionado e iniciar a navegação orientada." />
+
+    <!-- Botão de Calibração da Mira do Beacon para Teste -->
+    <Button
+        android:id="@+id/btnCalibrarMira"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        app:cornerRadius="14dp"
+        android:backgroundTint="#2196F3"
+        android:text="🎯 CALIBRAR MIRA NO BEACON"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp"
+        android:contentDescription="Botão para alinhar o azimute do beacon de teste diretamente para onde você está apontando." />
+
+    <!-- Botão de Calibração / Inversão de Bússola 180° -->
+    <Button
+        android:id="@+id/btnCalibrarBussola"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        app:cornerRadius="14dp"
+        android:backgroundTint="#FF9800"
+        android:text="🔄 INVERTER BÚSSOLA (180°)"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="14dp"
+        android:contentDescription="Botão para inverter a orientação da bússola em 180 graus." />
+
+    <!-- Botão Sair centralizado e acessível -->
+    <Button
+        android:id="@+id/btnSairExploracao"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        app:cornerRadius="20dp"
+        android:backgroundTint="#F44336"
+        android:text="SAIR"
+        android:textColor="#FFFFFF"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:hapticFeedbackEnabled="true"
+        android:contentDescription="Botão Sair. Toque para encerrar o modo de exploração livre e voltar ao menu principal." />
+
+</LinearLayout>
