@@ -155,21 +155,33 @@ class ExploracaoLivreManager(
      * Aplica o gradiente tátil "Quente ou Frio" e aciona pergunta TTS + foco de mira
      * quando a tolerância for <= 8º.
      */
+    /**
+     * Processa o azimute atual do dispositivo (0º a 360º).
+     * Aplica o gradiente tátil "Quente ou Frio" e aciona pergunta TTS + foco de mira
+     * quando a tolerância for <= 8º.
+     */
     fun processarOrientacao(azimuteAtual: Float, toleranceDegrees: Float = 8f) {
         val agora = System.currentTimeMillis()
         beaconsDetectados.entries.removeIf { agora - it.value.timestampMs > 8000 }
 
-        if (beaconsDetectados.isEmpty()) {
+        // 🚨 A MÁGICA ACONTECE AQUI: A TRAVA DE DISTÂNCIA FÍSICA!
+        // Filtramos a lista para o radar ignorar completamente qualquer ESP32 que esteja a mais de 1.5 metros.
+        // Assim, ecos do Bluetooth que vêm do final do corredor não vão acionar o motor de vibração.
+        val beaconsProximos = beaconsDetectados.values.filter { it.distanciaEstimada <= 1.5 }
+
+        // Mudamos a verificação para olhar apenas para a nova lista filtrada
+        if (beaconsProximos.isEmpty()) {
             if (ultimoBeaconFocadoId != null) {
                 ultimoBeaconFocadoId = null
                 onBeaconNaMiraChanged?.invoke(null)
             }
             onTelemetriaUpdated?.invoke(null)
-            hapticManager.stop()
+            hapticManager.stop() // Garante que o celular fique em silêncio se não houver nada perto
             return
         }
 
-        val beaconMaisProximo = beaconsDetectados.values.minByOrNull {
+        // O celular só vai procurar o alvo com a bússola entre as placas que já passaram no teste dos 1.5m
+        val beaconMaisProximo = beaconsProximos.minByOrNull {
             HapticManager.calculateAngularDifference(azimuteAtual, it.anguloAlvo)
         }
 
@@ -191,6 +203,7 @@ class ExploracaoLivreManager(
                 )
             )
 
+            // Como só placas próximas passam no filtro, a vibração será cirúrgica
             hapticManager.processarHapticQuenteFrio(diferencaMinima, toleranceDegrees)
 
             if (estaNaMira) {
@@ -246,3 +259,6 @@ class ExploracaoLivreManager(
         ultimoBeaconFocadoId = null
     }
 }
+
+
+

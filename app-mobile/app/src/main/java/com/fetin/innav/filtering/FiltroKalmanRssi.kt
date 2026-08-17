@@ -9,11 +9,15 @@ import java.util.concurrent.ConcurrentHashMap
  * garantindo uma leitura de RSSI estável para o modelo de perda de percurso (Log-Distance Path Loss).
  */
 class FiltroKalmanRssi(
-    private val processNoiseQ: Double = 0.08,    // Variância do processo (dinâmica do ambiente indoor)
-    private val measurementNoiseR: Double = 3.5,  // Variância de medição (ruído do hardware do rádio BLE)
+    // Reduzimos o Q (Assume que você anda devagar, logo o sinal não deve pular do nada)
+    private val processNoiseQ: Double = 0.02,
+
+    // Aumentamos muito o R (Assume que o rádio do ESP32 tem bastante ruído de eco)
+    private val measurementNoiseR: Double = 15.0,
+
     private var estimatedCovarianceP: Double = 1.0,
     private var estimatedValueX: Double = -70.0
-) {
+){
     private var isInitialized = false
 
     /**
