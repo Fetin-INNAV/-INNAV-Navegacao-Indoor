@@ -4,75 +4,77 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#000000"
-    android:padding="16dp"
-    android:gravity="center">
+    android:padding="24dp"
+    android:background="#000000">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="🔍 EXPLORAÇÃO LIVRE"
-        android:textColor="#FFFFFF"
+        android:text="🔍 RADAR DE AMBIENTE"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:gravity="center" />
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:layout_marginBottom="12dp"/>
 
     <TextView
-        android:id="@+id/txtStatusExploracao"
+        android:id="@+id/txtStatusVarredura"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Aponte o celular ao seu redor..."
+        android:text="Buscando locais próximos..."
+        android:textSize="18sp"
         android:textColor="#00FF00"
-        android:textSize="18sp"
         android:gravity="center"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="32dp"/>
 
-    <!-- Botão de Ação: Definir como Destino (Aparece quando na mira <= 8º) -->
-    <Button
-        android:id="@+id/btnDefinirDestino"
+    <!-- CARTÃO GIGANTE: MOSTRA O QUE ESTÁ PERTO -->
+    <LinearLayout
+        android:id="@+id/cardMaisProximo"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        app:cornerRadius="20dp"
-        android:backgroundTint="#00E676"
-        android:text="📍 DEFINIR COMO DESTINO"
-        android:textColor="#000000"
-        android:textSize="18sp"
-        android:textStyle="bold"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#FFD600"
+        android:padding="32dp"
         android:visibility="gone"
-        android:layout_marginBottom="12dp"
-        android:hapticFeedbackEnabled="true"
-        android:contentDescription="Botão para travar o destino selecionado e iniciar a navegação orientada." />
+        android:gravity="center"
+        android:elevation="8dp">
 
-    <!-- Botão de Calibração da Mira do Beacon para Teste -->
-    <Button
-        android:id="@+id/btnCalibrarMira"
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📍 VOCÊ ESTÁ PERTO DE:"
+            android:textColor="#424242"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/txtNomeMaisProximo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nome do Local"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:textSize="36sp"
+            android:textAlignment="center"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/txtDistanciaMaisProximo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sinal: -50 dBm | ~2.5m"
+            android:textColor="#212121"
+            android:textSize="20sp"/>
+    </LinearLayout>
+
+    <!-- Espaçador para empurrar o botão Sair lá para o fundo -->
+    <Space
         android:layout_width="match_parent"
-        android:layout_height="55dp"
-        app:cornerRadius="14dp"
-        android:backgroundTint="#2196F3"
-        android:text="🎯 CALIBRAR MIRA NO BEACON"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="10dp"
-        android:contentDescription="Botão para alinhar o azimute do beacon de teste diretamente para onde você está apontando." />
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
 
-    <!-- Botão de Calibração / Inversão de Bússola 180° -->
-    <Button
-        android:id="@+id/btnCalibrarBussola"
-        android:layout_width="match_parent"
-        android:layout_height="55dp"
-        app:cornerRadius="14dp"
-        android:backgroundTint="#FF9800"
-        android:text="🔄 INVERTER BÚSSOLA (180°)"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="14dp"
-        android:contentDescription="Botão para inverter a orientação da bússola em 180 graus." />
-
-    <!-- Botão Sair centralizado e acessível -->
+    <!-- ÚNICO BOTÃO DA TELA -->
     <Button
         android:id="@+id/btnSairExploracao"
         android:layout_width="match_parent"
@@ -81,9 +83,9 @@
         android:backgroundTint="#F44336"
         android:text="SAIR"
         android:textColor="#FFFFFF"
-        android:textSize="26sp"
+        android:textSize="28sp"
         android:textStyle="bold"
         android:hapticFeedbackEnabled="true"
-        android:contentDescription="Botão Sair. Toque para encerrar o modo de exploração livre e voltar ao menu principal." />
+        android:contentDescription="Encerrar exploração livre" />
 
 </LinearLayout>

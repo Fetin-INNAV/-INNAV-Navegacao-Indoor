@@ -58,17 +58,17 @@ class HapticManager(context: Context) {
             if (!vib.hasVibrator()) return@let
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val timings = longArrayOf(0, 100, 50, 200)
-                val amplitudes = intArrayOf(0, 255, 0, 255)
+                val timings = longArrayOf(0, 300, 150, 300, 150, 800)
+                val amplitudes = intArrayOf(0, 255, 0, 255, 0, 255)
                 val effect = if (vib.hasAmplitudeControl()) {
                     VibrationEffect.createWaveform(timings, amplitudes, -1)
                 } else {
-                    VibrationEffect.createOneShot(350, VibrationEffect.DEFAULT_AMPLITUDE)
+                    VibrationEffect.createOneShot(1500, VibrationEffect.DEFAULT_AMPLITUDE)
                 }
                 vib.vibrate(effect)
             } else {
                 @Suppress("DEPRECATION")
-                vib.vibrate(350)
+                vib.vibrate(1500)
             }
         }
     }

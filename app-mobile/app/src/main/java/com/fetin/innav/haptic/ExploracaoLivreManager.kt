@@ -150,52 +150,42 @@ class ExploracaoLivreManager(
         return novoNo.deviceName ?: novoNo.nomeLocal
     }
 
+
     /**
-     * Processa o azimute atual do dispositivo (0º a 360º).
-     * Aplica o gradiente tátil "Quente ou Frio" e aciona pergunta TTS + foco de mira
-     * quando a tolerância for <= 8º.
-     */
-    /**
-     * Processa o azimute atual do dispositivo (0º a 360º).
-     * Aplica o gradiente tátil "Quente ou Frio" e aciona pergunta TTS + foco de mira
-     * quando a tolerância for <= 8º.
+     * Processa a varredura do ambiente baseada puramente em PROXIMIDADE.
+     * Ignora a direção da bússola. Dispara a vibração e o áudio apenas
+     * quando o usuário entra no raio de 1.0 metro do ESP32.
      */
     fun processarOrientacao(azimuteAtual: Float, toleranceDegrees: Float = 8f) {
         val agora = System.currentTimeMillis()
         beaconsDetectados.entries.removeIf { agora - it.value.timestampMs > 8000 }
 
-        // 🚨 A MÁGICA ACONTECE AQUI: A TRAVA DE DISTÂNCIA FÍSICA!
-        // Filtramos a lista para o radar ignorar completamente qualquer ESP32 que esteja a mais de 1.5 metros.
-        // Assim, ecos do Bluetooth que vêm do final do corredor não vão acionar o motor de vibração.
-        val beaconsProximos = beaconsDetectados.values.filter { it.distanciaEstimada <= 1.5 }
+        // 🚨 NOVA REGRA: Filtra rigorosamente quem está a 1 metro (ou menos) de distância.
+        val beaconsProximos = beaconsDetectados.values.filter { it.distanciaEstimada <= 1.0 }
 
-        // Mudamos a verificação para olhar apenas para a nova lista filtrada
         if (beaconsProximos.isEmpty()) {
             if (ultimoBeaconFocadoId != null) {
                 ultimoBeaconFocadoId = null
                 onBeaconNaMiraChanged?.invoke(null)
             }
             onTelemetriaUpdated?.invoke(null)
-            hapticManager.stop() // Garante que o celular fique em silêncio se não houver nada perto
+            hapticManager.stop() // Garante o silêncio no corredor
             return
         }
 
-        // O celular só vai procurar o alvo com a bússola entre as placas que já passaram no teste dos 1.5m
-        val beaconMaisProximo = beaconsProximos.minByOrNull {
-            HapticManager.calculateAngularDifference(azimuteAtual, it.anguloAlvo)
-        }
+        // Pega a placa que está fisicamente mais perto do usuário (Ignora o ângulo)
+        val beaconMaisProximo = beaconsProximos.minByOrNull { it.distanciaEstimada }
 
         if (beaconMaisProximo != null) {
-            val diferencaMinima = HapticManager.calculateAngularDifference(azimuteAtual, beaconMaisProximo.anguloAlvo)
-            val estaNaMira = diferencaMinima <= toleranceDegrees
-
             val identificador = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.nomeLocal
+
+            // Atualiza a tela forçando os dados para mostrar que o alvo foi atingido
             onTelemetriaUpdated?.invoke(
                 TelemetriaMira(
                     azimuteCelular = azimuteAtual,
                     anguloAlvo = beaconMaisProximo.anguloAlvo,
-                    diferencaErro = diferencaMinima,
-                    estaNaMira = estaNaMira,
+                    diferencaErro = 0f, // Forçado a 0 para indicar "alvo cravado"
+                    estaNaMira = true,  // Forçado a true pois o usuário está na porta
                     idBeacon = identificador,
                     rssiBruto = beaconMaisProximo.rssiBruto,
                     rssiFiltrado = beaconMaisProximo.rssiFiltrado,
@@ -203,32 +193,19 @@ class ExploracaoLivreManager(
                 )
             )
 
-            // Como só placas próximas passam no filtro, a vibração será cirúrgica
-            hapticManager.processarHapticQuenteFrio(diferencaMinima, toleranceDegrees)
+            // Enganamos o HapticManager passando o erro angular como 0f.
+            // Isso faz ele disparar a vibração forte de "Chegada" instantaneamente.
+            hapticManager.processarHapticQuenteFrio(diferencaAngular = 0f, toleranceDegrees)
 
-            if (estaNaMira) {
-                val idBeaconAtual = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.macAddress.ifBlank { beaconMaisProximo.no.id }
+            // Lógica para falar o nome do destino sem repetir loucamente
+            val idBeaconAtual = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.macAddress.ifBlank { beaconMaisProximo.no.id }
 
-                if (ultimoBeaconFocadoId != idBeaconAtual) {
-                    ultimoBeaconFocadoId = idBeaconAtual
-
-                    val nomePonto = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.nomeLocal
-                    falarPerguntaDestino(nomePonto)
-                    onBeaconNaMiraChanged?.invoke(beaconMaisProximo)
-                }
-            } else {
-                if (ultimoBeaconFocadoId != null) {
-                    ultimoBeaconFocadoId = null
-                    onBeaconNaMiraChanged?.invoke(null)
-                }
+            if (ultimoBeaconFocadoId != idBeaconAtual) {
+                ultimoBeaconFocadoId = idBeaconAtual
+                val nomePonto = beaconMaisProximo.no.deviceName ?: beaconMaisProximo.no.nomeLocal
+                falarPerguntaDestino(nomePonto)
+                onBeaconNaMiraChanged?.invoke(beaconMaisProximo)
             }
-        } else {
-            if (ultimoBeaconFocadoId != null) {
-                ultimoBeaconFocadoId = null
-                onBeaconNaMiraChanged?.invoke(null)
-            }
-            onTelemetriaUpdated?.invoke(null)
-            hapticManager.stop()
         }
     }
 

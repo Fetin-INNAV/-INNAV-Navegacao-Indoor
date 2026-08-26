@@ -188,7 +188,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val result = tts.setLanguage(Locale("pt", "BR"))
             if (result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED) {
                 // Mensagem de abertura curta e objetiva
-                falar("INNAV iniciado. Selecione uma opção.")
+                falar("InNav aberto. Toque na parte de cima da tela para escolher o seu destino, ou na parte de baixo para o radar de ambiente. Dê dois toques na tela para selecionar.")
             }
         }
     }

@@ -32,9 +32,9 @@ class SplashActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             if (resultado == TextToSpeech.LANG_MISSING_DATA || resultado == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("INNAV_TTS", "Idioma PT-BR não suportado no dispositivo.")
-            } else {
-                falar("Bem-vindo ao INNAV. O seu assistente de navegação indoor.")
-            }
+           // } else {
+           //     falar("Bem-vindo ao INNAV. O seu assistente de navegação indoor.")
+           }
         }
     }
 
