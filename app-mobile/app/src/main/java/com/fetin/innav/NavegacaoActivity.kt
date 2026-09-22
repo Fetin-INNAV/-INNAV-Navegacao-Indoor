@@ -59,10 +59,10 @@ class NavegacaoActivity : AppCompatActivity() {
                 ultimaDistancia = CalculadoraAnguloNavegacao.estimarDistanciaMetros(ultimoRssiFiltrado)
                 anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDestinoLab)
 
-                val identificadorEncontrado = deviceName ?: macAddress
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
-                        txtSinal.text = "Alvo: $identificadorEncontrado\nSinal: %.1f dBm\nDistância: ~%.1fm\nMira Alvo: %.0f°".format(
+                        // 🚨 TROCAMOS PARA 'noDestinoLab.nomeLocal'
+                        txtSinal.text = "Alvo: ${noDestinoLab.nomeLocal}\nSinal: %.1f dBm\nDistância: ~%.1fm\nMira Alvo: %.0f°".format(
                             ultimoRssiFiltrado, ultimaDistancia, anguloAlvo
                         )
                     }
@@ -86,7 +86,10 @@ class NavegacaoActivity : AppCompatActivity() {
         noDestinoLab = No(id, nome, mac, devName, x, y)
 
         txtSinal = findViewById(R.id.txtSinalAoVivo)
+        txtSinal.text = "Buscando caminho para: ${noDestinoLab.nomeLocal}..."
         val btnAjuda = findViewById<Button>(R.id.btnAjuda)
+        val txtTituloDestino = findViewById<TextView>(R.id.txtTituloDestino)
+        txtTituloDestino.text = noDestinoLab.nomeLocal.uppercase()
 
         hapticManager = HapticManager(this)
         orientationManager = OrientationManager(this)
@@ -94,7 +97,7 @@ class NavegacaoActivity : AppCompatActivity() {
         anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDestinoLab)
 
         orientationManager.onAzimuthChanged = { azimuthDegrees ->
-            var azimuteCorrigido = azimuthDegrees + 180f
+            var azimuteCorrigido = azimuthDegrees
             if (azimuteCorrigido >= 360f) {
                 azimuteCorrigido -= 360f
             }
@@ -103,7 +106,7 @@ class NavegacaoActivity : AppCompatActivity() {
             if (!chegouNoDestino && ultimaDistancia != 99.0) {
                 val diferencaAngular = HapticManager.calculateAngularDifference(azimuteAtual, anguloAlvo)
 
-                if (diferencaAngular <= 15f) {
+                if (diferencaAngular <= 40f) {
                     if (ultimoRssiFiltrado >= -55.0) {
                         chegouNoDestino = true
                         finalizarNavegacaoComSucesso()
