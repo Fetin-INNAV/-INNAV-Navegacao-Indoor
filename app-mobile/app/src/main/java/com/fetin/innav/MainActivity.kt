@@ -196,31 +196,31 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun montarMapaFisico() {
         portaria = No(
             id = "ESP_01",
-            nomeLocal = "Portaria Principal",
+            nomeLocal = "Banheiro",
             deviceName = "INNAV_ESP_01",
             x = 0.0,
-            y = 5.0
+            y = 0.0
         )
         corredor = No(
             id = "ESP_02",
-            nomeLocal = "Corredor Central",
+            nomeLocal = "Corredor Copa",
             deviceName = "INNAV_ESP_02",
             x = 5.0,
-            y = 5.0
+            y = 2.0
         )
         labHardware = No(
             id = "ESP_03",
-            nomeLocal = "Laboratório de Hardware",
+            nomeLocal = "Laboratório Cdg",
             deviceName = "INNAV_ESP_03",
-            x = 10.0,
-            y = 10.0
+            x = 0.0,
+            y = 15.0
         )
         labCircuitos = No(
             id = "ESP_04",
-            nomeLocal = "Lab de Circuitos",
+            nomeLocal = "Mesa",
             deviceName = "INNAV_ESP_04",
-            x = 0.0,
-            y = 10.0
+            x = 3.0,
+            y = 0.0
         )
         cdg = No(
             id = "ESP_05",

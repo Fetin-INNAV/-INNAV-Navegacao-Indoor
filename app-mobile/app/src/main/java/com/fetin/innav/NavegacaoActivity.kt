@@ -16,6 +16,7 @@ import com.fetin.innav.haptic.CalculadoraAnguloNavegacao
 import com.fetin.innav.haptic.HapticManager
 import com.fetin.innav.haptic.OrientationManager
 import com.fetin.innav.models.No
+import androidx.core.graphics.toColorInt
 
 class NavegacaoActivity : AppCompatActivity() {
 
@@ -62,9 +63,7 @@ class NavegacaoActivity : AppCompatActivity() {
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed) {
                         // 🚨 TROCAMOS PARA 'noDestinoLab.nomeLocal'
-                        txtSinal.text = "Alvo: ${noDestinoLab.nomeLocal}\nSinal: %.1f dBm\nDistância: ~%.1fm\nMira Alvo: %.0f°".format(
-                            ultimoRssiFiltrado, ultimaDistancia, anguloAlvo
-                        )
+                        txtSinal.text = "Faltam\n%.1f metros".format(ultimaDistancia)
                     }
                 }
             }
@@ -113,13 +112,16 @@ class NavegacaoActivity : AppCompatActivity() {
                     }
                     else if (ultimaDistancia <= 6.0) {
                         hapticManager.vibratePulse(durationMs = 50L, amplitude = 180)
+                        txtSinal.setTextColor("#00FF00".toColorInt()) // Verde
                     }
                     else {
                         hapticManager.stop()
+                        txtSinal.setTextColor("#FFFFFF".toColorInt()) // Branco
                     }
                 }
                 else {
                     hapticManager.stop()
+                    txtSinal.setTextColor("#FFFFFF".toColorInt()) // Branco
                 }
             }
         }
