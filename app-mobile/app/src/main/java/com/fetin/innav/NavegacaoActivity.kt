@@ -97,7 +97,7 @@ class NavegacaoActivity : AppCompatActivity() {
         anguloAlvo = CalculadoraAnguloNavegacao.calcularAnguloAlvo(noAtualUsuario, noDestinoLab)
 
         orientationManager.onAzimuthChanged = { azimuthDegrees ->
-            var azimuteCorrigido = azimuthDegrees
+            var azimuteCorrigido = azimuthDegrees + 180f
             if (azimuteCorrigido >= 360f) {
                 azimuteCorrigido -= 360f
             }
