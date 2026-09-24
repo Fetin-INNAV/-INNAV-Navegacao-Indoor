@@ -32,12 +32,12 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var hapticManager: HapticManager
     private lateinit var gestureDetector: GestureDetector
 
-    // 5 Destinos físicos representados pelos 5 ESPs
-    private val espPortaria = No("ESP_01", "Portaria", "20:43:A8:63:34:EE", "INNAV_ESP_01", 0.0, 5.0)
+    // 5 Destinos físicos com os nomes oficiais padronizados
+    private val espBanheiro = No("ESP_01", "Banheiro", "20:43:A8:63:34:EE", "INNAV_ESP_01", 0.0, 5.0)
     private val espCorredor = No("ESP_02", "Corredor", "14:2B:2F:C1:FE:72", "INNAV_ESP_02", 5.0, 5.0)
-    private val espLabHardware = No("ESP_03", "Laboratório de Hardware", "3C:8A:1F:A4:B3:82", "INNAV_ESP_03", 10.0, 10.0)
-    private val espLabCircuitos = No("ESP_04", "Lab de Circuitos", "5C:01:3B:47:2A:B6", "INNAV_ESP_04", 0.0, 10.0)
-    private val espCDG = No("ESP_05", "CDG", "68:25:DD:48:1F:12", "INNAV_ESP_05", 15.0, 10.0)
+    private val espCDG = No("ESP_03", "CDG", "3C:8A:1F:A4:B3:82", "INNAV_ESP_03", 10.0, 10.0)
+    private val espMesaInnav = No("ESP_04", "Mesa INNAV", "5C:01:3B:47:2A:B6", "INNAV_ESP_04", 0.0, 10.0)
+    private val espExtra = No("ESP_05", "...", "68:25:DD:48:1F:12", "INNAV_ESP_05", 15.0, 10.0)
 
     private val requestAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -59,24 +59,25 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         hapticManager = HapticManager(this)
         configurarReconhecimentoDeVoz()
 
-        val btnPortaria = findViewById<Button>(R.id.btnDestinoPortaria)
+        // Mantém os IDs de layout antigos para não quebrar a sua UI atual
+        val btnBanheiro = findViewById<Button>(R.id.btnDestinoPortaria)
         val btnCorredor = findViewById<Button>(R.id.btnDestinoCorredor)
-        val btnHardware = findViewById<Button>(R.id.btnDestinoHardware)
-        val btnCircuitos = findViewById<Button>(R.id.btnDestinoCircuitos)
-        val btnCDG = findViewById<Button>(R.id.btnDestinoCDG)
+        val btnCDG = findViewById<Button>(R.id.btnDestinoHardware)
+        val btnMesaInnav = findViewById<Button>(R.id.btnDestinoCircuitos)
+        val btnExtra = findViewById<Button>(R.id.btnDestinoCDG)
 
-        configurarBotaoDestino(btnPortaria, espPortaria, "Portaria")
+        configurarBotaoDestino(btnBanheiro, espBanheiro, "Banheiro")
         configurarBotaoDestino(btnCorredor, espCorredor, "Corredor")
-        configurarBotaoDestino(btnHardware, espLabHardware, "Laboratório de Hardware")
-        configurarBotaoDestino(btnCircuitos, espLabCircuitos, "Lab de Circuitos")
         configurarBotaoDestino(btnCDG, espCDG, "CDG")
+        configurarBotaoDestino(btnMesaInnav, espMesaInnav, "Mesa INNAV")
+        configurarBotaoDestino(btnExtra, espExtra, "Opção Extra")
 
         // 🚨 DETECTOR DE GESTOS UNIFICADO (Voz + Voltar)
         gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             private val SWIPE_THRESHOLD = 100
             private val SWIPE_VELOCITY_THRESHOLD = 100
 
-            // O gesto de arrastar para voltar (que já estava funcionando perfeitamente)
+            // O gesto de arrastar para voltar
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
                 if (e1 != null && e2 != null) {
                     val diffY = e2.y - e1.y
@@ -92,9 +93,8 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 return false
             }
 
-            // 🚨 NOVO COMANDO DE VOZ: Segurar o dedo na tela
+            // COMANDO DE VOZ: Segurar o dedo na tela
             override fun onLongPress(e: MotionEvent) {
-                // Dá um tranco bem forte na mão para avisar que o celular percebeu o "Segurar"
                 hapticManager.vibratePulse(60, 250)
                 verificarPermissaoEOuvir()
             }
@@ -166,12 +166,12 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (!matches.isNullOrEmpty()) {
                     val textoFalado = matches[0].lowercase(Locale.getDefault())
 
+                    // Gatilhos de voz sincronizados com os novos nomes
                     val destinoEncontrado = when {
-                        textoFalado.contains("portaria") -> espPortaria
+                        textoFalado.contains("banheiro") -> espBanheiro
                         textoFalado.contains("corredor") -> espCorredor
-                        textoFalado.contains("hardware") || textoFalado.contains("laboratório") -> espLabHardware
-                        textoFalado.contains("circuito") || textoFalado.contains("circuitos") -> espLabCircuitos
                         textoFalado.contains("cdg") || textoFalado.contains("c d g") -> espCDG
+                        textoFalado.contains("mesa") || textoFalado.contains("innav") -> espMesaInnav
                         else -> null
                     }
 
@@ -203,16 +203,19 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun iniciarEscuta() {
         falar("Diga o nome do local para onde deseja ir.")
+
+        // 🚨 Aumentámos de 1500 para 3500 milissegundos para dar tempo de falar a frase toda
         handler.postDelayed({
             if (isFinishing || isDestroyed) return@postDelayed
-            if (::tts.isInitialized) tts.stop()
+
+            // 🚨 REMOVIDA a linha 'tts.stop()' que estava aqui a cortar o áudio à força
 
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
             }
             speechRecognizer?.startListening(intent)
-        }, 1500)
+        }, 3500)
     }
 
     private fun falar(texto: String) {
@@ -225,7 +228,6 @@ class DestinosActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             tts.setLanguage(Locale("pt", "BR"))
-            // 🚨 Aviso atualizado para o gesto correto
             falar("Selecione o seu destino na lista, ou segure o dedo na tela para falar no microfone.")
         }
     }

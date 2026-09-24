@@ -31,26 +31,23 @@ class ExploracaoLivreActivity : AppCompatActivity() {
     private lateinit var hapticManager: HapticManager
     private lateinit var exploracaoLivreManager: ExploracaoLivreManager
 
-    // Elementos de UI limpos (Apenas o que existe no novo XML)
     private lateinit var txtStatusVarredura: TextView
     private lateinit var cardMaisProximo: LinearLayout
     private lateinit var txtNomeMaisProximo: TextView
     private lateinit var txtDistanciaMaisProximo: TextView
 
-    // 🚨 Variáveis para controlar o assistente de voz (Agora no escopo correto da classe)
     private var ultimoLocalFalado: String = ""
     private var tempoUltimaFala: Long = 0
+    private var idExibidoAtualmente: String = ""
 
-
-    // Mapa de sinais em tempo real (MAC Address -> RSSI Bruto)
     private val sinaisAtuais = mutableMapOf<String, Int>()
 
     private val checkpointsConhecidos = listOf(
-        No("ESP_01", "Portaria Principal", "20:43:A8:63:34:EE", "INNAV_ESP_01", 0.0, 5.0),
-        No("ESP_02", "Corredor Central", "14:2B:2F:C1:FE:72", "INNAV_ESP_02", 5.0, 5.0),
-        No("ESP_03", "Lab de Hardware", "3C:8A:1F:A4:B3:82", "INNAV_ESP_03", 10.0, 10.0),
-        No("ESP_04", "Lab de Circuitos", "5C:01:3B:47:2A:B6", "INNAV_ESP_04", 0.0, 10.0),
-        No("ESP_05", "CDG", "68:25:DD:48:1F:12", "INNAV_ESP_05", 15.0, 10.0)
+        No("ESP_01", "Banheiro", "20:43:A8:63:34:EE", "INNAV_ESP_01", 0.0, 5.0),
+        No("ESP_02", "Corredor", "14:2B:2F:C1:FE:72", "INNAV_ESP_02", 5.0, 5.0),
+        No("ESP_03", "CDG", "3C:8A:1F:A4:B3:82", "INNAV_ESP_03", 10.0, 10.0),
+        No("ESP_04", "Mesa INNAV", "5C:01:3B:47:2A:B6", "INNAV_ESP_04", 0.0, 10.0),
+        No("ESP_05", "...", "68:25:DD:48:1F:12", "INNAV_ESP_05", 15.0, 10.0)
     )
 
     private val scanCallback = object : ScanCallback() {
@@ -65,7 +62,6 @@ class ExploracaoLivreActivity : AppCompatActivity() {
             val noEncontrado = checkpointsConhecidos.firstOrNull { it.correspondeAoDispositivo(macAddress, deviceName) }
 
             if (noEncontrado != null) {
-                // Atualiza a força do sinal no mapa de radar
                 sinaisAtuais[noEncontrado.id] = rssi
                 atualizarInterfaceVisual()
             }
@@ -77,11 +73,12 @@ class ExploracaoLivreActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_exploracao_livre)
 
-        // Vinculação de Interface
         txtStatusVarredura = findViewById(R.id.txtStatusVarredura)
         cardMaisProximo = findViewById(R.id.cardMaisProximo)
         txtNomeMaisProximo = findViewById(R.id.txtNomeMaisProximo)
         txtDistanciaMaisProximo = findViewById(R.id.txtDistanciaMaisProximo)
+
+        txtStatusVarredura.setTextColor(android.graphics.Color.parseColor("#FFE500"))
 
         val btnSair = findViewById<Button>(R.id.btnSairExploracao)
 
@@ -90,13 +87,13 @@ class ExploracaoLivreActivity : AppCompatActivity() {
 
         window.decorView.postDelayed({
             if (!isFinishing && !isDestroyed) {
-                exploracaoLivreManager.falarMensagem("Radar ativado. Mapeando ambiente.")
             }
         }, 800)
 
         btnSair.setOnClickListener {
             encerrarExploracaoEVoltar()
         }
+
         gestureDetector = android.view.GestureDetector(this, object : android.view.GestureDetector.SimpleOnGestureListener() {
             private val SWIPE_THRESHOLD = 100
             private val SWIPE_VELOCITY_THRESHOLD = 100
@@ -106,9 +103,9 @@ class ExploracaoLivreActivity : AppCompatActivity() {
                     val diffY = e2.y - e1.y
                     val diffX = e2.x - e1.x
                     if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > SWIPE_THRESHOLD && Math.abs(velocityY) > SWIPE_VELOCITY_THRESHOLD) {
-                        if (diffY < 0) { // Foi para cima
+                        if (diffY < 0) {
                             hapticManager.vibratePulse(50, 200)
-                            encerrarExploracaoEVoltar() // 🚨 Desliga o radar e volta
+                            encerrarExploracaoEVoltar()
                             return true
                         }
                     }
@@ -128,42 +125,72 @@ class ExploracaoLivreActivity : AppCompatActivity() {
             if (rankeados.isNotEmpty()) {
                 val idMaisProximo = rankeados[0].first
                 val rssiMaisProximo = rankeados[0].second
-                val noPrincipal = checkpointsConhecidos.first { it.id == idMaisProximo }
-                val estimativaMetros = CalculadoraAnguloNavegacao.estimarDistanciaMetros(rssiMaisProximo.toDouble())
 
-                // MOSTRAR NA TELA
-                cardMaisProximo.visibility = View.VISIBLE
-                txtStatusVarredura.text = "Rastreando ambiente..."
-                txtNomeMaisProximo.text = noPrincipal.nomeLocal
-                txtDistanciaMaisProximo.text = "Aprox. %.1fm".format(estimativaMetros)
+                // 🚨 LÓGICA ANTI PING-PONG DE TELA
+                val rssiAtualNaTela = sinaisAtuais[idExibidoAtualmente] ?: -100
 
-                // 🚨 NOVO FILTRO: Mais exigente (-55 dBm = tem que estar muito perto)
-                if (rssiMaisProximo >= -50) {
-                    val tempoAtual = System.currentTimeMillis()
+                // 1. ZONA MORTA: Se o local que está na tela ficar muito fraco (menor que -75), limpamos a tela.
+                if (rssiAtualNaTela < -75) {
+                    idExibidoAtualmente = ""
+                }
 
-                    // 🚨 TRAVA DUPLA DE ÁUDIO:
-                    // 1. O lugar tem que ser diferente do último falado.
-                    // 2. TEMPO DE RECARGA: Tem que ter passado pelo menos 8 segundos (8000 ms)
-                    // desde a última vez que ele abriu a boca. Isso impede que ele corte o próprio áudio!
-                    if (ultimoLocalFalado != noPrincipal.nomeLocal && (tempoAtual - tempoUltimaFala > 8000)) {
-
-                        // Vibra uma vez
-                        hapticManager.vibrateConfirmation()
-
-                        // Fala o nome do local sem interrupções
-                        exploracaoLivreManager.falarMensagem("Você está perto de ${noPrincipal.nomeLocal}")
-
-                        // Salva o local e trava o relógio por 8 segundos
-                        ultimoLocalFalado = noPrincipal.nomeLocal
-                        tempoUltimaFala = tempoAtual
+                // 2. REGRA DE ROUBO DE TELA:
+                if (idExibidoAtualmente.isEmpty()) {
+                    // Se a tela está vazia, aceitamos o sinal mais forte se ele for no mínimo razoável (>= -70)
+                    if (rssiMaisProximo >= -70) {
+                        idExibidoAtualmente = idMaisProximo
+                    }
+                } else if (idMaisProximo != idExibidoAtualmente) {
+                    // 🚨 A MÁGICA ACONTECE AQUI: Para um novo ESP roubar a tela, ele precisa ser
+                    // 10 dBm MAIS FORTE que o ESP que já está na tela. Isso mata a "piscada" de nomes!
+                    if (rssiMaisProximo > (rssiAtualNaTela + 10)) {
+                        idExibidoAtualmente = idMaisProximo
                     }
                 }
+
+                // 3. ATUALIZAR A INTERFACE COM O VENCEDOR
+                if (idExibidoAtualmente.isNotEmpty()) {
+                    val rssiDoExibido = sinaisAtuais[idExibidoAtualmente] ?: -100
+                    val noExibido = checkpointsConhecidos.first { it.id == idExibidoAtualmente }
+                    val estimativaMetros = CalculadoraAnguloNavegacao.estimarDistanciaMetros(rssiDoExibido.toDouble())
+
+                    cardMaisProximo.visibility = View.VISIBLE
+                    txtNomeMaisProximo.text = noExibido.nomeLocal
+                    txtDistanciaMaisProximo.text = "Aprox. %.1fm".format(estimativaMetros)
+
+                    // GATILHO DE ÁUDIO EXTREMO (-40 dBm = encostar no ESP)
+                    if (rssiDoExibido >= -50) {
+                        val tempoAtual = System.currentTimeMillis()
+
+                        if (ultimoLocalFalado != noExibido.nomeLocal && (tempoAtual - tempoUltimaFala > 8000)) {
+                            hapticManager.vibrateConfirmation()
+
+                            val fraseVoz = when (noExibido.id) {
+                                "ESP_01" -> "Você está no Banheiro."
+                                "ESP_02" -> "Você está no Corredor."
+                                "ESP_03" -> "Você está no CDG."
+                                "ESP_04" -> "Você está na Mesa INNAV."
+                                else -> "Você está perto de ${noExibido.nomeLocal}."
+                            }
+
+                            exploracaoLivreManager.falarMensagem(fraseVoz)
+                            ultimoLocalFalado = noExibido.nomeLocal
+                            tempoUltimaFala = tempoAtual
+                        }
+                    }
+                } else {
+                    // Esconde a caixa e mostra texto de caminhada
+                    cardMaisProximo.visibility = View.GONE
+                    txtStatusVarredura.text = "Caminhando... Buscando sinal"
+                }
+
             } else {
                 cardMaisProximo.visibility = View.GONE
                 txtStatusVarredura.text = "Buscando locais próximos..."
             }
         }
     }
+
     @SuppressLint("MissingPermission")
     private fun iniciarRadarBLE() {
         val filtros = mutableListOf<ScanFilter>()
@@ -207,6 +234,7 @@ class ExploracaoLivreActivity : AppCompatActivity() {
         hapticManager.stop()
         super.onDestroy()
     }
+
     override fun onTouchEvent(event: android.view.MotionEvent?): Boolean {
         event?.let { gestureDetector.onTouchEvent(it) }
         return super.onTouchEvent(event)

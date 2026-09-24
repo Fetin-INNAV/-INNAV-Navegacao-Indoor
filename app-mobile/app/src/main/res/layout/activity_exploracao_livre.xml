@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:text="Buscando locais próximos..."
         android:textSize="18sp"
-        android:textColor="#00FF00"
+        android:textColor="#FFE500"
         android:gravity="center"
         android:layout_marginBottom="32dp"/>
 

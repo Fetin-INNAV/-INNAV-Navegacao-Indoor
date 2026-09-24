@@ -38,13 +38,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private var ultimoCheckpointVisitado = ""
 
-    // Mapa físico de nós
+    // Mapa físico de nós com os nomes padronizados
     private val mapaInatel = Grafo()
-    private lateinit var portaria: No
+    private lateinit var banheiro: No
     private lateinit var corredor: No
-    private lateinit var labHardware: No
-    private lateinit var labCircuitos: No
     private lateinit var cdg: No
+    private lateinit var mesaInnav: No
+    private lateinit var moduloExtra: No
 
     private val filtroKalman = com.fetin.innav.filtering.FiltroKalmanRssi()
 
@@ -60,16 +60,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
             val rssiFiltrado = filtroKalman.filtrar(rssiBruto.toDouble())
 
-            if (portaria.correspondeAoDispositivo(macAddress, deviceName) && rssiFiltrado > -60.0) {
+            // Mudou de 'portaria' para 'banheiro' como ponto inicial
+            if (banheiro.correspondeAoDispositivo(macAddress, deviceName) && rssiFiltrado > -60.0) {
                 val idDispositivo = deviceName ?: macAddress
 
                 if (ultimoCheckpointVisitado != idDispositivo) {
                     ultimoCheckpointVisitado = idDispositivo
 
-                    Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está na: Portaria Principal ($idDispositivo)")
+                    Log.d("INNAV_ROTA", "📍 ALVO DETECTADO! Você está no: Banheiro ($idDispositivo)")
 
                     val calculadora = CalculadoraRota(mapaInatel)
-                    val rotaCalculada: List<Aresta> = calculadora.calcularCaminhoMaisCurto(portaria, labHardware)
+                    val rotaCalculada: List<Aresta> = calculadora.calcularCaminhoMaisCurto(banheiro, mesaInnav)
 
                     Log.d("INNAV_ROTA", "✅ Caminho traçado com sucesso!")
                     rotaCalculada.forEach { aresta: Aresta ->
@@ -194,7 +195,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun montarMapaFisico() {
-        portaria = No(
+        // Nomes das variáveis ajustados para convenção Kotlin (sem espaços) e nomes de exibição fiéis à imagem.
+        banheiro = No(
             id = "ESP_01",
             nomeLocal = "Banheiro",
             deviceName = "INNAV_ESP_01",
@@ -203,37 +205,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         )
         corredor = No(
             id = "ESP_02",
-            nomeLocal = "Corredor Copa",
+            nomeLocal = "Corredor",
             deviceName = "INNAV_ESP_02",
             x = 5.0,
             y = 2.0
         )
-        labHardware = No(
+        cdg = No(
             id = "ESP_03",
-            nomeLocal = "Laboratório Cdg",
+            nomeLocal = "CDG",
             deviceName = "INNAV_ESP_03",
             x = 0.0,
             y = 15.0
         )
-        labCircuitos = No(
+        mesaInnav = No(
             id = "ESP_04",
-            nomeLocal = "Mesa",
+            nomeLocal = "Mesa INNAV",
             deviceName = "INNAV_ESP_04",
             x = 3.0,
             y = 0.0
         )
-        cdg = No(
+        moduloExtra = No(
             id = "ESP_05",
-            nomeLocal = "CDG",
+            nomeLocal = "...",
             deviceName = "INNAV_ESP_05",
             x = 15.0,
             y = 10.0
         )
 
-        mapaInatel.adicionarAresta(origem = portaria, destino = corredor, distancia = 10.0, instrucao = "Siga 10 metros em frente pelo corredor principal.")
-        mapaInatel.adicionarAresta(origem = corredor, destino = labHardware, distancia = 5.0, instrucao = "Vire à direita e ande 5 metros para chegar ao laboratório de hardware.")
-        mapaInatel.adicionarAresta(origem = portaria, destino = labCircuitos, distancia = 5.0, instrucao = "Siga à esquerda por 5 metros até o laboratório de circuitos.")
-        mapaInatel.adicionarAresta(origem = labHardware, destino = cdg, distancia = 7.0, instrucao = "Continue pelo corredor por 7 metros até o CDG.")
+        // Atualizadas as arestas para usarem as novas variáveis correspondentes
+        mapaInatel.adicionarAresta(origem = banheiro, destino = corredor, distancia = 10.0, instrucao = "Siga 10 metros em frente pelo corredor principal.")
+        mapaInatel.adicionarAresta(origem = corredor, destino = cdg, distancia = 5.0, instrucao = "Vire à direita e ande 5 metros para chegar ao CDG.")
+        mapaInatel.adicionarAresta(origem = banheiro, destino = mesaInnav, distancia = 5.0, instrucao = "Siga à esquerda por 5 metros até a Mesa INNAV.")
+        mapaInatel.adicionarAresta(origem = cdg, destino = moduloExtra, distancia = 7.0, instrucao = "Continue pelo corredor por 7 metros.")
     }
 
     private fun pedirPermissoesBluetooth() {
